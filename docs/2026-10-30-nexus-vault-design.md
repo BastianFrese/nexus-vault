@@ -1,15 +1,15 @@
-# Design — Cyber Cortex (30.10.2026)
+# Design — Nexus Vault (30.10.2026)
 
 **Auftrag Bastian, wörtlich:** „such nach einer passenden Programmiersprache und
 passendem Backend etc und bau anhand der Mockup-HTML eine 1-zu-1-Kopie des Mockups
 als eigene Obsidian-App, die Claude Code dann als Gehirn nutzt" — geklärt im Gespräch:
 **nur zeigen + suchen + einfaches Bearbeiten (Roh-Markdown)**, kein Obsidian-Ersatz.
-Autostart ja. Name „Cyber Cortex" bestätigt.
+Autostart ja. Name „Nexus Vault" bestätigt.
 
 ## Intent
 
 Der Vault (`Obsidian`-Ordner im Benutzerverzeichnis, per Umgebungsvariable
-`CYBER_CORTEX_VAULT` übersteuerbar) ist das Gedächtnis (seit 29.10.: Eingang, Index,
+`NEXUS_VAULT_VAULT` übersteuerbar) ist das Gedächtnis (seit 29.10.: Eingang, Index,
 Nächste-Liste, Claude schreibt jeden Block hinein). Die App ist das **Gesicht**:
 Bastians Mockup-HTML **unverändert** (Platzhalter `__VAULT_DATA__` ersetzt — derselbe
 Mechanismus wie im Obsidian-Plugin `cyber-vault-mockup`), ein eigenes Fenster, live.

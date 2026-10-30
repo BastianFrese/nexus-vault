@@ -1,7 +1,7 @@
 {
-  "name": "cyber-cortex",
-  "version": "0.1.0",
-  "description": "Bastians Vault als Cyberpunk-Gehirn: das Mockup-HTML 1:1, mit echten Vault-Daten, live.",
+  "name": "nexus-vault",
+  "version": "0.2.0",
+  "description": "Bastians Vault als Nexus: das Mockup-HTML 1:1, mit echten Vault-Daten, live.",
   "main": "main.js",
   "scripts": {
     "start": "electron .",

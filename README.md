@@ -1,9 +1,9 @@
-# Cyber Cortex
+# Nexus Vault
 
 Das eigene Obsidian-Vault als eigenen Fenster — die Cyberpunk-Mockup-Oberfläche
 **1:1**, befüllt mit den echten Notizen, live.
 
-![Cyber Cortex](docs/cortex-screenshot.png)
+![Nexus Vault](docs/cortex-screenshot.png)
 
 ## Warum
 

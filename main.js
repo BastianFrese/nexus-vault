@@ -1,4 +1,4 @@
-/* main.js — Cyber Cortex: das Mockup-Fenster über dem echten Vault.
+/* main.js — Nexus Vault: das Mockup-Fenster über dem echten Vault.
  *
  * Aufgaben: Fenster → .lauf/index.html (Bastians HTML mit echten Daten),
  * Watcher auf dem Vault (Neuaufbau mit Debounce), IPC für Lesen/Speichern,
@@ -12,7 +12,7 @@ const path = require('path');
 const { bauIndex } = require('./core/index-bau');
 
 /* Vault-Ort: Umgebungsvariable oder der Ordner „Obsidian" im Benutzerverzeichnis. */
-const VAULT = process.env.CYBER_CORTEX_VAULT || path.join(os.homedir(), 'Obsidian');
+const VAULT = process.env.NEXUS_VAULT_VAULT || path.join(os.homedir(), 'Obsidian');
 const LAUF = path.join(__dirname, '.lauf', 'index.html');
 const ERNEUERUNG = 3000; // Debounce: Claude schreibt Blöcke über Sekunden
 const WACHSEINHEIT = 15000; // Sicherheitsnetz: Dateizahl + neueste Änderung
@@ -114,7 +114,7 @@ function editorOeffnen(pfad) {
   editor = { pfad: path.relative(VAULT, voll).split('\\').join('/'), fenster: new BrowserWindow({
     width: 860,
     height: 720,
-    title: 'Cyber Cortex — Editor',
+    title: 'Nexus Vault — Editor',
     backgroundColor: '#0a0d14',
     webPreferences: { preload: path.join(__dirname, 'editor-preload.js') },
   }) };
@@ -148,7 +148,7 @@ app.whenReady().then(() => {
   haupt = new BrowserWindow({
     width: 1600,
     height: 900,
-    title: 'Cyber Cortex',
+    title: 'Nexus Vault',
     backgroundColor: '#0a0d14',
     webPreferences: { preload: path.join(__dirname, 'preload.js') },
   });
