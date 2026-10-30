@@ -10,10 +10,12 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { bauIndex } = require('./core/index-bau');
+const { autoUpdater } = require('electron-updater');
 
 /* Vault-Ort: Umgebungsvariable oder der Ordner „Obsidian" im Benutzerverzeichnis. */
 const VAULT = process.env.NEXUS_VAULT_VAULT || path.join(os.homedir(), 'Obsidian');
-const LAUF = path.join(__dirname, '.lauf', 'index.html');
+const RUNDIR = path.join(app.getPath('userData'), 'lauf');
+const LAUF = path.join(RUNDIR, 'index.html');
 const ERNEUERUNG = 3000; // Debounce: Claude schreibt Blöcke über Sekunden
 const WACHSEINHEIT = 15000; // Sicherheitsnetz: Dateizahl + neueste Änderung
 
@@ -24,13 +26,14 @@ let wachstimer = null;
 /* ---------------------------------------------------------- Aufbau + Watch */
 
 function neuBauen(ursache) {
+  try { fs.mkdirSync(RUNDIR, { recursive: true }); } catch (e) {}
   try {
     bauIndex(VAULT);
   } catch (e) {
     /* Kein dialog.showErrorBox — modal und blockiert den Main-Prozess, bis
        ihn jemand anklickt (Befund 30.10.: Port tot bei CPU-Last). */
-    try { fs.mkdirSync(path.join(__dirname, '.lauf'), { recursive: true }); } catch (e2) {}
-    fs.appendFileSync(path.join(__dirname, '.lauf', 'fehler.log'),
+    try { fs.mkdirSync(RUNDIR, { recursive: true }); } catch (e2) {}
+    fs.appendFileSync(path.join(RUNDIR, 'fehler.log'),
       new Date().toISOString() + ' ' + (ursache || '') + ': ' + (e && e.message) + '\n');
   }
   if (haupt && !haupt.isDestroyed()) {
@@ -114,7 +117,7 @@ function editorOeffnen(pfad) {
   editor = { pfad: path.relative(VAULT, voll).split('\\').join('/'), fenster: new BrowserWindow({
     width: 860,
     height: 720,
-    title: 'Nexus Vault — Editor',
+    title: 'Nexus Vault v' + app.getVersion() + ' — Editor',
     backgroundColor: '#0a0d14',
     webPreferences: { preload: path.join(__dirname, 'editor-preload.js') },
   }) };
@@ -148,11 +151,14 @@ app.whenReady().then(() => {
   haupt = new BrowserWindow({
     width: 1600,
     height: 900,
-    title: 'Nexus Vault',
+    title: 'Nexus Vault v' + app.getVersion(),
     backgroundColor: '#0a0d14',
     webPreferences: { preload: path.join(__dirname, 'preload.js') },
   });
   haupt.loadFile(LAUF);
+  if (app.isPackaged) {
+    try { autoUpdater.checkForUpdatesAndNotify(); } catch (e) { console.error(e); }
+  }
   Menu.setApplicationMenu(Menu.buildFromTemplate(menuVorlage));
 
   let wache = null;
@@ -163,7 +169,7 @@ app.whenReady().then(() => {
     });
   } catch (e) {
     // Vault fehlt/ist gesperrt → das 15-s-Silhouetten-Netz übernimmt, sobald da
-    const log = path.join(__dirname, '.lauf', 'fehler.log');
+    const log = path.join(RUNDIR, 'fehler.log');
     fs.appendFileSync(log, new Date().toISOString() + ' watch: ' + e.message + '\n');
   }
 

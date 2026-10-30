@@ -5,12 +5,52 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "test": "node test/selbsttest.js"
+    "test": "node test/selbsttest.js",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win"
+  },
+  "build": {
+    "appId": "com.bastianfrese.nexusvault",
+    "productName": "Nexus Vault",
+    "directories": {
+      "output": "dist"
+    },
+    "artifactName": "Nexus-Vault-Setup-${version}.${ext}",
+    "files": [
+      "main.js",
+      "preload.js",
+      "editor-preload.js",
+      "editor.html",
+      "assets/**/*",
+      "core/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "BastianFrese",
+      "repo": "nexus-vault",
+      "releaseType": "release"
+    }
   },
   "author": "Bastian Frese (mit Claude Code)",
   "license": "UNLICENSED",
   "private": true,
+  "dependencies": {
+    "electron-updater": "^6.8.11"
+  },
   "devDependencies": {
-    "electron": "^37.0.0"
+    "electron": "^37.0.0",
+    "electron-builder": "^26.18.0"
   }
 }
