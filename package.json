@@ -1,6 +1,6 @@
 {
   "name": "nexus-vault",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Bastians Vault als Nexus: das Mockup-HTML 1:1, mit echten Vault-Daten, live.",
   "main": "main.js",
   "scripts": {
