@@ -10,7 +10,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { bauIndex } = require('./core/index-bau');
-const { lesevault } = require('./core/vault-daten');
+const { lesevault, pruefeVault } = require('./core/vault-daten');
 const { autoUpdater } = require('electron-updater');
 const http = require('http');
 
@@ -169,12 +169,70 @@ function startClaudeApi() {
     const url = new URL(req.url || '/', 'http://127.0.0.1:' + API_PORT);
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     res.setHeader('Access-Control-Allow-Origin', 'http://127.0.0.1');
-    if (req.method !== 'GET') {
+    if (req.method !== 'GET' && !(req.url || '').startsWith('/mcp')) {
       res.statusCode = 405;
       res.end(JSON.stringify({ fehler: 'Nur GET unterstützt' }));
       return;
     }
     try {
+      if (url.pathname === '/mcp') {
+        let body = '';
+        req.on('data', c => body += c);
+        req.on('end', () => {
+          let rpc = {};
+          try { rpc = JSON.parse(body || '{}'); } catch (e) { rpc = {}; }
+          const reply = (result, error) => {
+            res.setHeader('Content-Type', 'application/json; charset=utf-8');
+            res.end(JSON.stringify({ jsonrpc: '2.0', id: rpc.id ?? null, ...(error ? { error } : { result }) }));
+          };
+          const { method, params } = rpc;
+          if (method === 'initialize') {
+            reply({ protocolVersion: '2024-11-05', capabilities: { tools: {} }, serverInfo: { name: 'Nexus Vault', version: app.getVersion() } });
+            return;
+          }
+          if (method === 'tools/list') {
+            reply({ tools: [
+              { name: 'list_notes', description: 'Listet Vault-Notizen (id, title, category, tags).', inputSchema: { type: 'object', properties: { limit: { type: 'number' } } } },
+              { name: 'read_note', description: 'Liest den Rohinhalt einer Notiz.', inputSchema: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] } },
+              { name: 'search_notes', description: 'Volltextsuche im Vault.', inputSchema: { type: 'object', properties: { query: { type: 'string' }, limit: { type: 'number' } } } },
+              { name: 'vault_checks', description: 'Prüft Orphans, kaputte Links, fehlende Frontmatter/Tags.', inputSchema: { type: 'object', properties: {} } },
+              { name: 'graph_summary', description: 'Knoten- und Kantenanzahl plus Top-Verweise.', inputSchema: { type: 'object', properties: {} } },
+            ] });
+            return;
+          }
+          if (method === 'tools/call') {
+            const name = params && params.name;
+            const args = (params && params.arguments) || {};
+            let out;
+            if (name === 'list_notes') {
+              const { daten } = lesevault(VAULT);
+              out = (daten.notes || []).slice(0, Number(args.limit) || 200).map(n => ({ id: n.id, title: n.title, category: n.category, tags: n.tags }));
+            } else if (name === 'read_note') {
+              const voll = inVault(args.path || '');
+              if (!voll) throw new Error('Ungültiger Pfad');
+              out = { path: args.path, content: fs.readFileSync(voll, 'utf8').replace(/^﻿/, '') };
+            } else if (name === 'search_notes') {
+              const q = (args.query || '').toLowerCase();
+              const { daten } = lesevault(VAULT);
+              out = (daten.notes || []).filter(n => (n.title + ' ' + (n.content || '') + ' ' + (n.tags || []).join(' ')).toLowerCase().includes(q))
+                .slice(0, Number(args.limit) || 20)
+                .map(n => ({ id: n.id, title: n.title, snippet: (n.content || '').slice(0, 240) }));
+            } else if (name === 'vault_checks') {
+              out = pruefeVault(VAULT);
+            } else if (name === 'graph_summary') {
+              const { daten } = lesevault(VAULT);
+              out = { notes: (daten.notes || []).length, edges: (daten.edges || []).length };
+            } else {
+              reply(null, { code: -32601, message: 'Unbekanntes Tool: ' + name });
+              return;
+            }
+            reply({ content: [{ type: 'text', text: JSON.stringify(out, null, 2) }] });
+            return;
+          }
+          reply(null, { code: -32601, message: 'Unbekannte Methode: ' + method });
+        });
+        return; // response handled in end handler
+      }
       if (url.pathname === '/health') {
         res.end(JSON.stringify({ ok: true, version: app.getVersion(), vault: VAULT, port: API_PORT }));
         return;
@@ -218,6 +276,10 @@ function startClaudeApi() {
           .filter(Boolean)
           .slice(0, 30);
         res.end(JSON.stringify({ count: hits.length, hits }));
+        return;
+      }
+      if (url.pathname === '/api/checks') {
+        res.end(JSON.stringify(pruefeVault(VAULT)));
         return;
       }
       if (url.pathname === '/api/graph') {

@@ -162,6 +162,59 @@ function lesevault(wurzel) {
   };
 }
 
+
+/** Vault-Gesundheitsprüfung für Claude Code: Orphans, broken Links, Frontmatter, ... */
+function pruefeVault(wurzel) {
+  const dateien = listeMarkdown(wurzel).slice().sort();
+  const basisMap = new Map();
+  const pfadMap = new Map();
+  const meta = [];
+  const eingehend = new Map();
+  const basen = new Map();
+  for (const voll of dateien) {
+    let text = '';
+    try { text = (fs.readFileSync(voll, 'utf8') || '').replace(/^﻿/, ''); } catch (e) { continue; }
+    const pfad = path.relative(wurzel, voll).split('\\').join('/');
+    const basis = path.basename(pfad, path.extname(pfad)).toLowerCase();
+    basen.set(basis, (basen.get(basis) || 0) + 1);
+    const hatFrontmatter = new RegExp('^---\\r?\\n').test(text);
+    const links = wikilinks((ohneFrontmatter(text)).replace(/```[\s\S]*?```/g, ' ').replace(/`[^`\n]*`/g, ' '));
+    const on = tagsAus(text);
+    const resolves = [];
+    const broken = [];
+    // basis/pfad maps lazy: erst alles eintragen, dann auflösen
+    meta.push({ pfad, basis, hatFrontmatter, links, on });
+  }
+  for (const m of meta) { if (!basisMap.has(m.basis)) basisMap.set(m.basis, m.pfad); }
+  for (const m of meta) { pfadMap.set(m.pfad.toLowerCase().replace(/\.md$/, ''), m.pfad); }
+  for (const m of meta) {
+    const geloest = [];
+    const kaputt = [];
+    for (const z of m.links) {
+      const gefunden = aufloesen(z, basisMap, pfadMap);
+      if (gefunden) { geloest.push(gefunden); eingehend.set(gefunden, (eingehend.get(gefunden) || 0) + 1); }
+      else kaputt.push(z);
+    }
+    m.resolves = geloest;
+    m.broken = kaputt;
+  }
+  // fix resolves push above (ensure arrays)
+  meta.forEach(m => { if (!Array.isArray(m.resolves)) m.resolves = []; if (!Array.isArray(m.broken)) m.broken = []; });
+  const orphans = meta.filter(m => !eingehend.has(m.pfad)).map(m => m.pfad);
+  const missingFrontmatter = meta.filter(m => !m.hatFrontmatter).map(m => m.pfad);
+  const missingTags = meta.filter(m => !m.on.length).map(m => m.pfad);
+  const brokenAll = meta.flatMap(m => m.broken.map(b => ({ note: m.pfad, link: b })));
+  const duplicateBasenames = [...basen.entries()].filter(([, c]) => c > 1).map(([b]) => b);
+  return {
+    stats: { notes: dateien.length, links: meta.reduce((s, m) => s + m.links.length, 0), orphans: orphans.length, broken: brokenAll.length },
+    orphans: orphans.slice(0, 30),
+    brokenLinks: brokenAll.slice(0, 50),
+    missingFrontmatter: missingFrontmatter.slice(0, 30),
+    missingTags: missingTags.slice(0, 30),
+    duplicateBasenames,
+  };
+}
+
 module.exports = {
   listeMarkdown,
   wikilinks,
@@ -172,4 +225,5 @@ module.exports = {
   ohneFrontmatter,
   titelAus,
   lesevault,
+  pruefeVault,
 };
