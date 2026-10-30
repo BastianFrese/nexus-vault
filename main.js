@@ -20,6 +20,7 @@ const RUNDIR = path.join(app.getPath('userData'), 'lauf');
 const LAUF = path.join(RUNDIR, 'index.html');
 const ERNEUERUNG = 3000; // Debounce: Claude schreibt Blöcke über Sekunden
 const API_PORT = Number(process.env.NEXUS_VAULT_API_PORT || 8787);
+const SSE_CLIENTS = new Set();
 const WACHSEINHEIT = 15000; // Sicherheitsnetz: Dateizahl + neueste Änderung
 
 let haupt = null;
@@ -43,6 +44,12 @@ function neuBauen(ursache) {
     /* Reload auch im Fehlerfall: die alte Datei bleibt lesbar, nichts hängt. */
     haupt.loadFile(LAUF);
   }
+  try {
+    const msg = JSON.stringify({ event: 'vault-changed', zeit: new Date().toISOString(), runDir: RUNDIR });
+    for (const c of SSE_CLIENTS) {
+      try { c.write('event: vault-changed\ndata: ' + msg + '\n\n'); } catch (e) { SSE_CLIENTS.delete(c); }
+    }
+  } catch (e) {}
 }
 
 function wacheVault() {
@@ -232,6 +239,32 @@ function startClaudeApi() {
           reply(null, { code: -32601, message: 'Unbekannte Methode: ' + method });
         });
         return; // response handled in end handler
+      }
+      if (url.pathname === '/events') {
+        res.writeHead(200, {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+          'Access-Control-Allow-Origin': 'http://127.0.0.1',
+        });
+        res.write('event: hello\ndata: ' + JSON.stringify({ ok: true, port: API_PORT }) + '\n\n');
+        SSE_CLIENTS.add(res);
+        const hb = setInterval(() => { try { res.write(': heartbeat\n\n'); } catch (e) { clearInterval(hb); SSE_CLIENTS.delete(res); } }, 25000);
+        req.on('close', () => { clearInterval(hb); SSE_CLIENTS.delete(res); });
+        return;
+      }
+      if (url.pathname === '/api/context') {
+        const { daten } = lesevault(VAULT);
+        const specials = ['Start.md', 'Nächstes.md', 'Index.md', 'Eingang/Eingang.md'];
+        const out = ['# Nexus Vault — Claude-Kontext', '', 'Vault: ' + VAULT, 'Notizen: ' + (daten.notes || []).length, 'Verweise: ' + (daten.edges || []).length, ''];
+        for (const sp of specials) {
+          const n = (daten.notes || []).find(x => x.id === sp);
+          if (n) { out.push('## ' + n.title + ' (' + n.id + ')', '', (n.content || '').slice(0, 2500), ''); }
+        }
+        out.push('## Notiz-Liste', '');
+        (daten.notes || []).forEach(n => out.push('- ' + n.id + ' — ' + n.title));
+        res.end(JSON.stringify({ markdown: out.join('\n') }));
+        return;
       }
       if (url.pathname === '/health') {
         res.end(JSON.stringify({ ok: true, version: app.getVersion(), vault: VAULT, port: API_PORT }));
