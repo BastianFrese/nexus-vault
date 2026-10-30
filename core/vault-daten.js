@@ -87,8 +87,9 @@ function kategorie(pfad) {
 }
 
 function ohneFrontmatter(text) {
-  // Der Editor des Mockups kennt kein YAML — sonst steht "--- datum: ... ---" im Text.
-  if (text.indexOf('---') !== 0) return text;
+  // Nur echtes YAML-Frontmatter: Öffner exakt `---\n` am Dateianfang
+  // (Review-Befund: `----`-Trenner und `--- foo` sind kein Frontmatter).
+  if (!/^---\r?\n/.test(text)) return text;
   const ende = text.indexOf('\n---', 3);
   if (ende === -1) return text;
   const danach = text.indexOf('\n', ende + 4);
@@ -111,16 +112,16 @@ function titelAus(text, fallback) {
   return treffer ? treffer[1].trim() : fallback;
 }
 
-/** Der ganze Walk: Vault-Ordner → { daten, zaehler }. Reine Funktion über den Ordner. */
+/** Der ganze Walk: Vault- Ordner → { daten, zaehler }. Reine Funktion über den Ordner. */
 function lesevault(wurzel) {
-  const dateien = listeMarkdown(wurzel);
+  const dateien = listeMarkdown(wurzel).slice().sort();
   const basisMap = new Map();
   const pfadMap = new Map();
   const notizen = [];
   for (const voll of dateien) {
     let text;
     try {
-      text = fs.readFileSync(voll, 'utf8');
+      text = (fs.readFileSync(voll, 'utf8') || '').replace(/^\uFEFF/, ''); // BOM-Rest
     } catch (e) {
       continue;
     }
@@ -132,7 +133,9 @@ function lesevault(wurzel) {
       path: pfad,
       category: kategorie(pfad),
       tags: tagsAus(text),
-      content: koerper,
+      content: koerper, // bleibt — der Renderer braucht den Körper
+      // Verweise aus dem KÖRPER ohne Code: [[x]] in ```-Blöcken ist Doku, kein Verweis
+      _links: wikilinks(koerper.replace(/```[\s\S]*?```/g, ' ').replace(/`[^`\n]*`/g, ' ')),
     });
     const basis = path.basename(pfad, path.extname(pfad)).toLowerCase();
     if (!basisMap.has(basis)) basisMap.set(basis, pfad);
@@ -141,23 +144,16 @@ function lesevault(wurzel) {
 
   // Verweise: quelle → aufgelöste Ziele
   const verweise = {};
-  for (const voll of dateien) {
-    let text;
-    try {
-      text = fs.readFileSync(voll, 'utf8');
-    } catch (e) {
-      continue;
-    }
-    const pfad = path.relative(wurzel, voll).split('\\').join('/');
-    const rohe = wikilinks(text);
-    if (!rohe.length) continue;
+  for (const n of notizen) {
+    if (!n._links || !n._links.length) continue;
     const geloest = [];
-    for (const ziel of rohe) {
-      const aufgeloest = aufloesen(ziel, basisMap, pfadMap);
-      if (aufgeloest) geloest.push(aufgeloest);
+    for (const ziel of n._links) {
+      const gefunden = aufloesen(ziel, basisMap, pfadMap);
+      if (gefunden) geloest.push(gefunden);
     }
-    if (geloest.length) verweise[pfad] = geloest;
+    if (geloest.length) verweise[n.id] = geloest;
   }
+  notizen.forEach(n => { delete n._links; }); // nicht in die Mockup-Daten
 
   const daten = baueDaten(notizen, verweise, null);
   return {

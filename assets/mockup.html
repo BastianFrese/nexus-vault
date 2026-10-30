@@ -327,6 +327,15 @@
         // --- VAULT DATABASE ---
         const vaultData = __VAULT_DATA__;
 
+        // --- HTML-SICHERHEIT (Eingriff #11, 30.10.): Notiztexte sind Daten, kein
+        // Markup: sonst wird <img onerror=...> im Fließtext zum Element. Alle
+        // Notiz-Texte/Meta ent-escapen, bevor sie in Template-Literale fließen.
+        function ent(s) {
+            return String(s ?? '').replace(/[&<>"']/g, c => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[c]));
+        }
+
 
         // State Tracking
         let activeNoteId = (vaultData.notes[0] || { id: null }).id;
@@ -361,7 +370,7 @@
                     noteItem.onclick = () => selectNote(note.id);
                     noteItem.innerHTML = `
                         <i data-lucide="file-text" class="w-3 h-3 ${isActive ? 'text-cyber-cyan' : 'text-cyber-muted'}"></i>
-                        <span class="truncate">${note.title}</span>
+                        <span class="truncate">${ent(note.title)}</span>
                     `;
                     treeEl.appendChild(noteItem);
                 });
@@ -375,9 +384,9 @@
             const tagContainer = document.getElementById('tag-cloud');
             const allTags = [...new Set(vaultData.notes.flatMap(n => n.tags))];
             
-            tagContainer.innerHTML = allTags.map(tag => `
+tagContainer.innerHTML = allTags.map(tag => `
                 <span class="px-2 py-0.5 rounded-full text-[10px] bg-cyber-card border border-cyber-border text-cyber-cyan hover:border-cyber-cyan cursor-pointer transition">
-                    ${tag}
+                    ${ent(tag)}
                 </span>
             `).join('');
         }
@@ -401,7 +410,7 @@
                 tab.innerHTML = `
                     <i data-lucide="file-code" class="w-3 h-3"></i>
                     <span class="truncate max-w-[120px]">${note.title}</span>
-                    <i data-lucide="x" class="w-3 h-3 hover:text-cyber-pink transition ml-1" onclick="closeTab(event, '${id}')"></i>
+                    <i data-lucide="x" class="w-3 h-3 hover:text-cyber-pink transition ml-1" onclick="closeTab(event, '${ent(id)}')"></i>
                 `;
                 tabsEl.appendChild(tab);
             });
@@ -442,7 +451,7 @@
             const noteBody = document.getElementById('note-body');
             
             // Basic markdown parser simulation
-            let formattedContent = note.content
+            let formattedContent = ent(note.content)
                 // Headers
                 .replace(/^# (.*$)/gim, '<h1 class="text-2xl font-bold text-cyber-cyan glow-cyan tracking-wide border-b border-cyber-border pb-2 mb-4">$1</h1>')
                 .replace(/^## (.*$)/gim, '<h2 class="text-lg font-semibold text-cyber-purple mt-6 mb-3 flex items-center gap-2"><i data-lucide="hash" class="w-4 h-4 text-cyber-cyan"></i>$1</h2>')
@@ -462,7 +471,7 @@
                 .replace(/\[\[([^\]]+)\]\]/g, (match, title) => {
                     const targetNote = vaultData.notes.find(n => n.title.toLowerCase() === title.toLowerCase());
                     const targetId = targetNote ? targetNote.id : '';
-                    return `<span onclick="selectNote('${targetId}')" class="text-cyber-cyan hover:underline cursor-pointer font-medium bg-cyber-cyan/10 px-1 py-0.5 rounded border border-cyber-cyan/30 inline-flex items-center gap-1"><i data-lucide="link" class="w-3 h-3"></i>${title}</span>`;
+                    return `<span onclick="selectNote('${ent(targetId)}')" class="text-cyber-cyan hover:underline cursor-pointer font-medium bg-cyber-cyan/10 px-1 py-0.5 rounded border border-cyber-cyan/30 inline-flex items-center gap-1"><i data-lucide="link" class="w-3 h-3"></i>${ent(title)}</span>`;
                 })
                 // Checkboxes
                 .replace(/- \[x\] (.*$)/gim, '<div class="flex items-center space-x-2 text-cyber-muted line-through my-1"><input type="checkbox" checked disabled class="rounded text-cyber-cyan bg-cyber-bg border-cyber-border"><span class="text-xs">$1</span></div>')
@@ -490,7 +499,7 @@
                 .replace(/\n\n/g, '<div class="h-2"></div>');
 
             // Render Tags at top of note
-            const tagBadgeList = note.tags.map(t => `<span class="px-2 py-0.5 rounded-full text-[10px] bg-cyber-purple/10 text-cyber-purple border border-cyber-purple/30">${t}</span>`).join(' ');
+            const tagBadgeList = note.tags.map(t => `<span class="px-2 py-0.5 rounded-full text-[10px] bg-cyber-purple/10 text-cyber-purple border border-cyber-purple/30">${ent(t)}</span>`).join(' ');
 
             noteBody.innerHTML = `
                 <div class="flex items-center gap-2 mb-2">
@@ -809,7 +818,7 @@
                 tooltip.style.top = `${pos.screenY + 15}px`;
                 document.getElementById('tooltip-title').innerText = hoveredNode.title;
                 document.getElementById('tooltip-desc').innerText = `Category: ${hoveredNode.category}`;
-                document.getElementById('tooltip-tags').innerHTML = hoveredNode.tags.map(t => `<span class="px-1.5 py-0.5 rounded text-[9px] bg-cyber-cyan/10 text-cyber-cyan border border-cyber-cyan/30">${t}</span>`).join('');
+                document.getElementById('tooltip-tags').innerHTML = hoveredNode.tags.map(t => `<span class="px-1.5 py-0.5 rounded text-[9px] bg-cyber-cyan/10 text-cyber-cyan border border-cyber-cyan/30">${ent(t)}</span>`).join('');
             } else {
                 tooltip.classList.add('hidden');
             }

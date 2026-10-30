@@ -31,6 +31,7 @@ function neuBauen(ursache) {
   } catch (e) {
     /* Kein dialog.showErrorBox — modal und blockiert den Main-Prozess, bis
        ihn jemand anklickt (Befund 30.10.: Port tot bei CPU-Last). */
+    try { fs.mkdirSync(path.join(__dirname, '.lauf'), { recursive: true }); } catch (e2) {}
     const log = path.join(__dirname, '.lauf', 'fehler.log');
     fs.appendFileSync(log, new Date().toISOString() + ' ' + (ursache || '') + ': ' + (e && e.message) + '\n');
   }
@@ -152,10 +153,17 @@ app.whenReady().then(() => {
   haupt.loadFile(LAUF);
   Menu.setApplicationMenu(Menu.buildFromTemplate(menuVorlage));
 
-  fs.watch(VAULT, { recursive: true }, (ereignis, dateiname) => {
-    if (!dateiname || !dateiname.endsWith('.md')) return;
-    wacheVault();
-  });
+  let wache = null;
+  try {
+    wache = fs.watch(VAULT, { recursive: true }, (ereignis, dateiname) => {
+      if (!dateiname || !dateiname.toLowerCase().endsWith('.md')) return;
+      wacheVault();
+    });
+  } catch (e) {
+    // Vault fehlt/ist gesperrt → das 15-s-Silhouetten-Netz übernimmt, sobald da
+    const log = path.join(__dirname, '.lauf', 'fehler.log');
+    fs.appendFileSync(log, new Date().toISOString() + ' watch: ' + e.message + '\n');
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) app.quit();

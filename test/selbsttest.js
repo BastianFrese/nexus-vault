@@ -15,13 +15,13 @@ fs.writeFileSync(path.join(wurzel, 'Projekte', 'c.md'), '# Notiz C\nkein link\n'
 
 const vault = lesevault(wurzel);
 
-/* Kanten: a→b (Paar a↔b zusammengefallen, b→a doppelt weg),
-   a→c (voller Pfad), a→fremd unaufgelöst → weg. */
+/* Kanten: a↔b (Paar zusammengefallen — mit sort() liest b.md zuerst, die Kante
+   trägt b als Quelle), a→c (voller Pfad), a→fremd unaufgelöst → weg. */
 assert.deepStrictEqual(vault.zaehler, { notes: 3, links: 2 }, 'zaehler: ' + JSON.stringify(vault.zaehler));
 
 const kanten = vault.daten.edges.map(k => [k.source, k.target]).sort();
 assert.deepStrictEqual(kanten, [
-  ['a.md', 'Projekte/b.md'],
+  ['Projekte/b.md', 'a.md'],
   ['a.md', 'Projekte/c.md'],
 ], 'kanten: ' + JSON.stringify(kanten));
 
