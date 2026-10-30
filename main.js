@@ -13,6 +13,7 @@ const { bauIndex } = require('./core/index-bau');
 const VAULT = process.env.CYBER_CORTEX_VAULT || 'C:\\Users\\basti\\Obsidian';
 const LAUF = path.join(__dirname, '.lauf', 'index.html');
 const ERNEUERUNG = 3000; // Debounce: Claude schreibt Blöcke über Sekunden
+const WACHSEINHEIT = 15000; // Sicherheitsnetz: Dateizahl + neueste Änderung
 
 let haupt = null;
 let editor = null; // { fenster, pfad } — genau eine bearbeitete Notiz
@@ -28,7 +29,10 @@ function neuBauen(ursache) {
       haupt.loadFile(LAUF);
     }
   } catch (e) {
-    dialog.showErrorBox('Cyber Cortex', 'Vault konnte nicht gelesen werden:\n' + e.message);
+    /* Kein dialog.showErrorBox — modal und blockiert den Main-Prozess, bis
+       ihn jemand anklickt (Befund 30.10.: Port tot bei CPU-Last). */
+    const log = path.join(__dirname, '.lauf', 'fehler.log');
+    fs.appendFileSync(log, new Date().toISOString() + ' ' + (ursache || '') + ': ' + (e && e.message) + '\n');
   }
 }
 
@@ -36,6 +40,34 @@ function wacheVault() {
   if (wachstimer) clearTimeout(wachstimer);
   wachstimer = setTimeout(() => neuBauen('vault'), ERNEUERUNG);
 }
+
+/* Sicherheitsnetz für Fälle, die fs.watch verpasst (Befund 30.10.: das Löschen
+   einer .md löste kein Watch-Ereignis aus): ein Fingerabdruck aus Dateizahl
+   + neuester Änderungszeit wird alle 15 s nachgemessen — ändert er sich,
+   wird neu gebaut. readdir über ~130 Dateien kostet nichts. */
+function silhouette() {
+  const dateien = fs.readdirSync(VAULT, { recursive: true })
+    .filter(n => n.toLowerCase().endsWith('.md'));
+  let frischeste = 0;
+  for (const d of dateien) {
+    let t = 0;
+    try { t = fs.statSync(path.join(VAULT, d)).mtimeMs; } catch (e) { t = 0; }
+    if (t > frischeste) frischeste = t;
+  }
+  return dateien.length + '|' + frischeste;
+}
+
+let letzteSilhouette = '';
+setInterval(() => {
+  try {
+    const s = silhouette();
+    if (s !== letzteSilhouette) {
+      letzteSilhouette = s;
+      wacheVault();
+    }
+  } catch (e) { /* Nächste Runde */
+  }
+}, WACHSEINHEIT);
 
 /* -------------------------------------------------------------- Notizen-I/O */
 
@@ -86,11 +118,17 @@ function editorOeffnen(pfad) {
   editor.fenster.loadFile(path.join(__dirname, 'editor.html'));
 }
 
+ipcMain.on('editor-oeffnen-aktuell', () => {
+  haupt?.webContents.executeJavaScript('typeof activeNoteId!=="undefined"?activeNoteId:null')
+    .then(id => (id ? editorOeffnen(id) : null))
+    .catch(() => {});
+});
+
 const menuVorlage = [
   {
     label: 'Notiz',
     submenu: [
-      { label: 'Aktuelle Notiz bearbeiten', accelerator: 'Ctrl+E', click: () => {
+      { label: 'Aktuelle Notiz bearbeiten', click: () => {
         haupt?.webContents.executeJavaScript('typeof activeNoteId!=="undefined"?activeNoteId:null')
           .then(id => (id ? editorOeffnen(id) : null))
           .catch(() => {});

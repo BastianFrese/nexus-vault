@@ -18,10 +18,13 @@ function datenInHtml(html, daten) {
   if (!html.includes('__VAULT_DATA__')) {
     throw new Error('Platzhalter __VAULT_DATA__ fehlt — Vorlage geändert?');
   }
-  html = html.replace('__VAULT_DATA__', json);
+  /* Ersetzer-FUNKTION statt String: ein String-Ersatz expandiert $-Muster
+     ($', $&, …) — ein `$'` in einer echten Notiz hat die Vorlage sonst in die
+     Ausgabe hineinkopiert und das Skript zerstört (Befund 30.10.). */
+  html = html.replace('__VAULT_DATA__', () => json);
   return html.replace(
     'let activeNoteId = (vaultData.notes[0] || { id: null }).id;',
-    'let activeNoteId = ' + JSON.stringify(daten.aktiv) + ';',
+    () => 'let activeNoteId = ' + JSON.stringify(daten.aktiv) + ';',
   );
 }
 
