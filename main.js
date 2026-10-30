@@ -5,18 +5,21 @@
  * Editor-Fenster (rohes Markdown, Strg+S), Autostart-Helfer.
  */
 'use strict';
-const { app, BrowserWindow, ipcMain, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu, clipboard } = require('electron');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { bauIndex } = require('./core/index-bau');
+const { lesevault } = require('./core/vault-daten');
 const { autoUpdater } = require('electron-updater');
+const http = require('http');
 
 /* Vault-Ort: Umgebungsvariable oder der Ordner „Obsidian" im Benutzerverzeichnis. */
 const VAULT = process.env.NEXUS_VAULT_VAULT || path.join(os.homedir(), 'Obsidian');
 const RUNDIR = path.join(app.getPath('userData'), 'lauf');
 const LAUF = path.join(RUNDIR, 'index.html');
 const ERNEUERUNG = 3000; // Debounce: Claude schreibt Blöcke über Sekunden
+const API_PORT = Number(process.env.NEXUS_VAULT_API_PORT || 8787);
 const WACHSEINHEIT = 15000; // Sicherheitsnetz: Dateizahl + neueste Änderung
 
 let haupt = null;
@@ -142,13 +145,105 @@ const menuVorlage = [
       } },
       { label: 'Neu von innen', accelerator: 'Ctrl+R', click: () => neuBauen('manuell') },
       { type: 'separator' },
+      { label: 'Claude: Vault-Kontext kopieren', click: () => {
+        try {
+          const { daten } = lesevault(VAULT);
+          const lines = ['# Nexus Vault — Kontext für Claude Code', '',
+            'Vault: ' + VAULT, 'Notizen: ' + (daten.notes || []).length,
+            'Verweise: ' + (daten.edges || []).length, '', '## Notizen', ''];
+          (daten.notes || []).forEach(n => lines.push('- ' + n.id + ' — ' + n.title));
+          clipboard.writeText(lines.join('\n'));
+        } catch (e) { console.error(e); }
+      } },
+      { label: 'Claude: API-Adresse (localhost:' + API_PORT + ')', enabled: false },
+      { type: 'separator' },
       { label: 'Beenden', accelerator: 'Ctrl+Q', click: () => app.quit() },
     ],
   },
 ];
 
+
+/* ---------------------------------------------------------- Claude-API (localhost) */
+function startClaudeApi() {
+  const server = http.createServer((req, res) => {
+    const url = new URL(req.url || '/', 'http://127.0.0.1:' + API_PORT);
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('Access-Control-Allow-Origin', 'http://127.0.0.1');
+    if (req.method !== 'GET') {
+      res.statusCode = 405;
+      res.end(JSON.stringify({ fehler: 'Nur GET unterstützt' }));
+      return;
+    }
+    try {
+      if (url.pathname === '/health') {
+        res.end(JSON.stringify({ ok: true, version: app.getVersion(), vault: VAULT, port: API_PORT }));
+        return;
+      }
+      if (url.pathname === '/api/notes') {
+        const { daten } = lesevault(VAULT);
+        const notes = (daten.notes || []).map(n => ({
+          id: n.id, title: n.title, category: n.category, tags: n.tags, path: n.path,
+        }));
+        res.end(JSON.stringify({ count: notes.length, notes }));
+        return;
+      }
+      if (url.pathname === '/api/note') {
+        const pfad = url.searchParams.get('path') || '';
+        const voll = inVault(pfad);
+        if (!voll) {
+          res.statusCode = 400;
+          res.end(JSON.stringify({ fehler: 'Ungültiger Pfad' }));
+          return;
+        }
+        let text = '';
+        try { text = fs.readFileSync(voll, 'utf8').replace(/^﻿/, ''); } catch (e) {
+          res.statusCode = 404;
+          res.end(JSON.stringify({ fehler: e.message }));
+          return;
+        }
+        res.end(JSON.stringify({ id: pfad, path: pfad, content: text, ok: true }));
+        return;
+      }
+      if (url.pathname === '/api/search') {
+        const q = (url.searchParams.get('q') || '').toLowerCase().trim();
+        const { daten } = lesevault(VAULT);
+        const hits = (daten.notes || [])
+          .map(n => {
+            const haystack = (n.title + ' ' + (n.content || '') + ' ' + (n.tags || []).join(' ')).toLowerCase();
+            if (!q || !haystack.includes(q)) return null;
+            const idx = haystack.indexOf(q);
+            const start = Math.max(0, idx - 80);
+            return { id: n.id, title: n.title, category: n.category, snippet: (n.content || '').slice(start, start + 180) };
+          })
+          .filter(Boolean)
+          .slice(0, 30);
+        res.end(JSON.stringify({ count: hits.length, hits }));
+        return;
+      }
+      if (url.pathname === '/api/graph') {
+        const { daten } = lesevault(VAULT);
+        res.end(JSON.stringify({ notes: (daten.notes || []).map(n => ({ id: n.id, title: n.title })),
+          edges: daten.edges || [] }));
+        return;
+      }
+      res.statusCode = 404;
+      res.end(JSON.stringify({ fehler: 'Nicht gefunden', routen: ['/health','/api/notes','/api/note?path=','/api/search?q=','/api/graph'] }));
+    } catch (e) {
+      res.statusCode = 500;
+      res.end(JSON.stringify({ fehler: e.message }));
+    }
+  });
+  server.on('error', (e) => {
+    console.error('Claude-API konnte nicht starten:', e.message);
+  });
+  server.listen(API_PORT, '127.0.0.1', () => {
+    console.log('Claude-API läuft auf http://127.0.0.1:' + API_PORT);
+  });
+}
+
 app.whenReady().then(() => {
   neuBauen('start');
+  startClaudeApi();
   haupt = new BrowserWindow({
     width: 1600,
     height: 900,
