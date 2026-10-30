@@ -1,0 +1,171 @@
+/* main.js — Cyber Cortex: das Mockup-Fenster über dem echten Vault.
+ *
+ * Aufgaben: Fenster → .lauf/index.html (Bastians HTML mit echten Daten),
+ * Watcher auf dem Vault (Neuaufbau mit Debounce), IPC für Lesen/Speichern,
+ * Editor-Fenster (rohes Markdown, Strg+S), Autostart-Helfer.
+ */
+'use strict';
+const { app, BrowserWindow, ipcMain, Menu, dialog } = require('electron');
+const fs = require('fs');
+const path = require('path');
+const { bauIndex } = require('./core/index-bau');
+
+const VAULT = process.env.CYBER_CORTEX_VAULT || 'C:\\Users\\basti\\Obsidian';
+const LAUF = path.join(__dirname, '.lauf', 'index.html');
+const ERNEUERUNG = 3000; // Debounce: Claude schreibt Blöcke über Sekunden
+
+let haupt = null;
+let editor = null; // { fenster, pfad } — genau eine bearbeitete Notiz
+let wachstimer = null;
+
+/* ---------------------------------------------------------- Aufbau + Watch */
+
+function neuBauen(ursache) {
+  try {
+    const { zaehler } = bauIndex(VAULT);
+    if (haupt && !haupt.isDestroyed()) {
+      haupt.webContents.setTitle('Cyber Cortex — ' + zaehler.notes + ' Notes / ' + zaehler.links + ' Links');
+      haupt.loadFile(LAUF);
+    }
+  } catch (e) {
+    dialog.showErrorBox('Cyber Cortex', 'Vault konnte nicht gelesen werden:\n' + e.message);
+  }
+}
+
+function wacheVault() {
+  if (wachstimer) clearTimeout(wachstimer);
+  wachstimer = setTimeout(() => neuBauen('vault'), ERNEUERUNG);
+}
+
+/* -------------------------------------------------------------- Notizen-I/O */
+
+function inVault(pfad) {
+  /* Nur relative Pfade unter dem Vault; kein .. nach draußen. */
+  if (typeof pfad !== 'string' || !pfad.length) return null;
+  const normal = path.normalize(pfad).replace(/^(\.\.[/\\])+/, '');
+  const voll = path.resolve(VAULT, normal);
+  if (!voll.toLowerCase().startsWith(VAULT.toLowerCase() + path.sep)) return null;
+  return voll;
+}
+
+/** Zeilenenden + Kodierung der Datei bewahren; UTF-8 ohne BOM schreiben. */
+function schreibeNotiz(pfad, text) {
+  const voll = inVault(pfad);
+  if (!voll) throw new Error('Pfad liegt nicht im Vault: ' + pfad);
+  let alt = '';
+  try {
+    const puff = fs.readFileSync(voll);
+    // BOM-Falle: Obsidian schreibt ohne BOM — also bleibt er auch weg.
+    alt = puff.toString('utf8').replace(/^\uFEFF/, '');
+  } catch (e) { /* neu angelegte Notiz */ }
+  const crlf = /\r\n/.test(alt);
+  const neu = crlf ? text.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n') : text.replace(/\r\n/g, '\n');
+  if (neu === alt) return { geaendert: false };
+  fs.writeFileSync(voll, neu, 'utf8');
+  return { geaendert: true };
+}
+
+/* ----------------------------------------------------------------------- UI */
+
+function editorOeffnen(pfad) {
+  const voll = inVault(pfad);
+  if (!voll) return;
+  if (editor && !editor.fenster.isDestroyed()) {
+    editor.pfad = path.relative(VAULT, voll).split('\\').join('/');
+    editor.fenster.loadFile(path.join(__dirname, 'editor.html'));
+    editor.fenster.focus();
+    return;
+  }
+  editor = { pfad: path.relative(VAULT, voll).split('\\').join('/'), fenster: new BrowserWindow({
+    width: 860,
+    height: 720,
+    title: 'Cyber Cortex — Editor',
+    backgroundColor: '#0a0d14',
+    webPreferences: { preload: path.join(__dirname, 'editor-preload.js') },
+  }) };
+  editor.fenster.loadFile(path.join(__dirname, 'editor.html'));
+}
+
+const menuVorlage = [
+  {
+    label: 'Notiz',
+    submenu: [
+      { label: 'Aktuelle Notiz bearbeiten', accelerator: 'Ctrl+E', click: () => {
+        haupt?.webContents.executeJavaScript('typeof activeNoteId!=="undefined"?activeNoteId:null')
+          .then(id => (id ? editorOeffnen(id) : null))
+          .catch(() => {});
+      } },
+      { label: 'Neu von innen', accelerator: 'Ctrl+R', click: () => neuBauen('manuell') },
+      { type: 'separator' },
+      { label: 'Beenden', accelerator: 'Ctrl+Q', click: () => app.quit() },
+    ],
+  },
+];
+
+app.whenReady().then(() => {
+  neuBauen('start');
+  haupt = new BrowserWindow({
+    width: 1600,
+    height: 900,
+    title: 'Cyber Cortex',
+    backgroundColor: '#0a0d14',
+    webPreferences: { preload: path.join(__dirname, 'preload.js') },
+  });
+  haupt.loadFile(LAUF);
+  Menu.setApplicationMenu(Menu.buildFromTemplate(menuVorlage));
+
+  fs.watch(VAULT, { recursive: true }, (ereignis, dateiname) => {
+    if (!dateiname || !dateiname.endsWith('.md')) return;
+    wacheVault();
+  });
+
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) app.quit();
+  });
+});
+
+app.on('window-all-closed', () => {
+  app.quit();
+});
+
+/* ----------------------------------------------------------------------- IPC */
+
+ipcMain.handle('notiz-lesen', (ev, pfad) => {
+  const voll = inVault(pfad);
+  if (!voll) return { fehler: 'Pfad liegt nicht im Vault' };
+  let text = '';
+  try {
+    text = fs.readFileSync(voll, 'utf8').replace(/^\uFEFF/, '');
+  } catch (e) {
+    return { fehler: e.message };
+  }
+  return { text };
+});
+
+ipcMain.handle('notiz-speichern', (ev, pfad, text) => {
+  try {
+    if (typeof text !== 'string' || !text.length) return { fehler: 'Leerer Text wird nie geschrieben' };
+    return schreibeNotiz(pfad, text);
+  } catch (e) {
+    return { fehler: e.message };
+  }
+});
+
+/* Der Editor lädt neu und braucht Pfad + Inhalt seines Auftrags. */
+ipcMain.handle('editor-init', () => {
+  if (!editor) return { fehler: 'kein Editor' };
+  const pfad = editor.pfad;
+  const voll = inVault(pfad);
+  let text = '';
+  try {
+    text = fs.readFileSync(voll, 'utf8').replace(/^\uFEFF/, '');
+  } catch (e) {
+    return { pfad, fehler: e.message };
+  }
+  return { pfad, text };
+});
+
+/* -------------------------------------------------------------- Autostart */
+
+/* Registry-Eintrag setzt ein Skript außerhalb (start-cortex.vbs) — die App
+ * macht ihn nicht selbst, Bastian hat ihn über die Einrichtung bekommen. */

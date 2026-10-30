@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Cyber Cortex — Editor</title>
+<style>
+  body { margin: 0; background: #0a0d14; color: #e2e8f0; font: 13px/1.6 "Cascadia Code", Consolas, monospace; }
+  header { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid rgb(56 189 248 / .15); }
+  header .pfad { flex: 1; color: #94a3b8; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  button { background: rgb(0 240 255 / .1); color: #00f0ff; border: 1px solid rgb(56 189 248 / .3); border-radius: 6px; padding: 5px 14px; cursor: pointer; }
+  button:hover { background: rgb(0 240 255 / .2); }
+  #status { color: #64748b; font-size: 11px; }
+  textarea { width: 100%; height: calc(100vh - 45px); box-sizing: border-box; padding: 16px; background: #0a0d14; color: #e2e8f0; border: 0; outline: 0; resize: none; font: 13px/1.7 "Cascadia Code", Consolas, monospace; }
+</style>
+</head>
+<body>
+<header>
+  <span class="pfad" id="pfad"></span>
+  <span id="status"></span>
+  <button id="save">Speichern (Strg+S)</button>
+</header>
+<textarea id="text" spellcheck="false"></textarea>
+<script>
+let pfad = null;
+init();
+async function init() {
+  const r = await window.cortex.init();
+  if (r.fehler) { document.getElementById('status').textContent = r.fehler; return; }
+  pfad = r.pfad;
+  document.getElementById('pfad').textContent = pfad;
+  document.getElementById('text').value = r.text;
+}
+async function speichern() {
+  if (!pfad) return;
+  const r = await window.cortex.speichern(pfad, document.getElementById('text').value);
+  const s = document.getElementById('status');
+  if (r.fehler) { s.textContent = 'Fehler: ' + r.fehler; s.style.color = '#f87171'; }
+  else if (r.geaendert === false) { s.textContent = 'unverändert'; s.style.color = '#64748b'; }
+  else { s.textContent = 'gespeichert ' + new Date().toLocaleTimeString(); s.style.color = '#00f0ff'; }
+}
+document.getElementById('save').addEventListener('click', speichern);
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); speichern(); }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "name": "cyber-cortex",
+  "version": "0.1.0",
+  "description": "Bastians Vault als Cyberpunk-Gehirn: das Mockup-HTML 1:1, mit echten Vault-Daten, live.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "node test/selbsttest.js"
+  },
+  "author": "Bastian Frese (mit Claude Code)",
+  "license": "UNLICENSED",
+  "private": true,
+  "devDependencies": {
+    "electron": "^37.0.0"
+  }
+}

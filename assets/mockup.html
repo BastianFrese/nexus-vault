@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="en" class="dark h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Obsidian Cyberpunk Vault Mockup</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- FontAwesome for fallback/extra icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        cyber: {
+                            bg: '#0a0d14',
+                            sidebar: '#0d111a',
+                            card: '#121824',
+                            border: 'rgba(56, 189, 248, 0.15)',
+                            borderBright: 'rgba(56, 189, 248, 0.4)',
+                            cyan: '#00f0ff',
+                            purple: '#a855f7',
+                            pink: '#ec4899',
+                            emerald: '#10b981',
+                            amber: '#f59e0b',
+                            blue: '#3b82f6',
+                            text: '#e2e8f0',
+                            muted: '#64748b'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['Fira Code', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Custom Customizations & Glassmorphism */
+        body {
+            background-color: #0a0d14;
+            color: #e2e8f0;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+        }
+
+        .glass-panel {
+            background: rgba(18, 24, 36, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(56, 189, 248, 0.12);
+        }
+
+        .glass-panel-interactive {
+            transition: all 0.2s ease;
+        }
+        .glass-panel-interactive:hover {
+            border-color: rgba(0, 240, 255, 0.3);
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.1);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(10, 13, 20, 0.5);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(56, 189, 248, 0.2);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 240, 255, 0.5);
+        }
+
+        /* Glowing text & borders */
+        .glow-cyan {
+            text-shadow: 0 0 10px rgba(0, 240, 255, 0.6);
+        }
+        .glow-purple {
+            text-shadow: 0 0 10px rgba(168, 85, 247, 0.6);
+        }
+        .border-glow {
+            box-shadow: 0 0 12px rgba(0, 240, 255, 0.15);
+        }
+
+        /* Code block syntax colors */
+        .syn-keyword { color: #ec4899; font-weight: 600; }
+        .syn-func { color: #00f0ff; }
+        .syn-str { color: #10b981; }
+        .syn-comment { color: #64748b; font-style: italic; }
+        .syn-type { color: #a855f7; }
+        .syn-num { color: #f59e0b; }
+
+        /* Animation Keyframes */
+        @keyframes pulseGlow {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 0.9; }
+        }
+        .animate-pulse-glow {
+            animation: pulseGlow 3s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col select-none antialiased">
+
+    <!-- TOP HEADER / TAB BAR -->
+    <header class="h-10 bg-cyber-sidebar border-b border-cyber-border flex items-center justify-between px-3 z-30">
+        <!-- Title & Vault Name -->
+        <div class="flex items-center space-x-3">
+            <div class="flex items-center space-x-2 text-cyber-cyan font-bold tracking-wider text-xs">
+                <i data-lucide="hexagons" class="w-4 h-4 text-cyber-cyan animate-pulse"></i>
+                <span class="bg-gradient-to-r from-cyber-cyan via-cyber-purple to-cyber-pink bg-clip-text text-transparent">NEXUS_VAULT v3.8</span>
+            </div>
+            
+            <div class="h-4 w-[1px] bg-cyber-border"></div>
+
+            <!-- Open Tabs -->
+            <div class="flex items-center space-x-1 overflow-x-auto text-xs" id="tabs-container">
+                <!-- Tabs generated dynamically -->
+            </div>
+        </div>
+
+        <!-- Quick Controls -->
+        <div class="flex items-center space-x-3 text-xs text-cyber-muted">
+            <button id="cmd-palette-btn" class="flex items-center space-x-1.5 px-2 py-1 rounded bg-cyber-card border border-cyber-border hover:border-cyber-cyan hover:text-cyber-cyan transition">
+                <i data-lucide="command" class="w-3.5 h-3.5"></i>
+                <span>Cmd Palette</span>
+                <kbd class="px-1 py-0.5 text-[10px] bg-cyber-bg rounded text-gray-400">Ctrl+P</kbd>
+            </button>
+            <div class="h-4 w-[1px] bg-cyber-border"></div>
+            <button onclick="toggleLayout('graph-full')" class="hover:text-cyber-cyan transition title="Fullscreen Graph">
+                <i data-lucide="network" class="w-4 h-4"></i>
+            </button>
+            <button onclick="toggleLayout('split')" class="hover:text-cyber-cyan transition" title="Split View">
+                <i data-lucide="columns" class="w-4 h-4"></i>
+            </button>
+            <button onclick="toggleSidebar()" class="hover:text-cyber-cyan transition" title="Toggle Sidebar">
+                <i data-lucide="panel-left" class="w-4 h-4"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN CONTAINER -->
+    <div class="flex-1 flex overflow-hidden relative">
+
+        <!-- LEFT SIDEBAR -->
+        <aside id="sidebar" class="w-72 bg-cyber-sidebar border-r border-cyber-border flex flex-col transition-all duration-300 z-20">
+            <!-- Sidebar Header / Search -->
+            <div class="p-3 border-b border-cyber-border space-y-2">
+                <div class="relative">
+                    <i data-lucide="search" class="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-cyber-muted"></i>
+                    <input type="text" id="file-search" placeholder="Search vault or tags..." 
+                           class="w-full bg-cyber-bg border border-cyber-border rounded-md pl-8 pr-3 py-1.5 text-xs text-cyber-text placeholder-cyber-muted focus:outline-none focus:border-cyber-cyan focus:ring-1 focus:ring-cyber-cyan">
+                </div>
+                <div class="flex items-center justify-between text-[11px] text-cyber-muted px-1">
+                    <span class="flex items-center gap-1"><i data-lucide="folder-git2" class="w-3 h-3 text-cyber-purple"></i> <span id="count-notes">0</span> Notes</span>
+                    <span class="flex items-center gap-1"><i data-lucide="link" class="w-3 h-3 text-cyber-cyan"></i> <span id="count-links">0</span> Links</span>
+                </div>
+            </div>
+
+            <!-- Vault Explorer Tree -->
+            <div class="flex-1 overflow-y-auto p-2 space-y-1 text-xs" id="file-tree">
+                <!-- Dynamic File Tree -->
+            </div>
+
+            <!-- Tag Cloud Section -->
+            <div class="p-3 border-t border-cyber-border bg-cyber-bg/40">
+                <div class="text-[10px] font-semibold tracking-wider text-cyber-muted uppercase mb-2 flex justify-between items-center">
+                    <span>Active Tags</span>
+                    <i data-lucide="tag" class="w-3 h-3 text-cyber-pink"></i>
+                </div>
+                <div class="flex flex-wrap gap-1.5" id="tag-cloud">
+                    <!-- Dynamic Tags -->
+                </div>
+            </div>
+        </aside>
+
+        <!-- CENTER EDITOR & PREVIEW AREA -->
+        <main id="editor-container" class="flex-1 flex flex-col bg-cyber-bg border-r border-cyber-border relative overflow-hidden transition-all duration-300">
+            <!-- Note Metadata Bar -->
+            <div class="h-9 border-b border-cyber-border/60 bg-cyber-card/40 flex items-center justify-between px-4 text-xs">
+                <div class="flex items-center space-x-2 overflow-hidden">
+                    <i data-lucide="file-code" class="w-4 h-4 text-cyber-cyan flex-shrink-0"></i>
+                    <span id="active-note-path" class="text-cyber-muted font-mono truncate">dev/proxmox-cluster.md</span>
+                </div>
+                <div class="flex items-center space-x-3 text-cyber-muted">
+                    <span class="flex items-center gap-1 text-[11px]"><i data-lucide="clock" class="w-3 h-3"></i> Edited 2m ago</span>
+                    <button id="toggle-editor-view" class="hover:text-cyber-cyan transition"><i data-lucide="eye" class="w-4 h-4"></i></button>
+                </div>
+            </div>
+
+            <!-- Note Editor Content -->
+            <div class="flex-1 overflow-y-auto p-6 space-y-6 font-sans max-w-4xl mx-auto w-full" id="note-body">
+                <!-- Dynamic Markdown content here -->
+            </div>
+        </main>
+
+        <!-- RIGHT AREA: INTERACTIVE GRAPH VIEW -->
+        <section id="graph-container" class="flex-1 relative bg-cyber-bg flex flex-col overflow-hidden">
+            <!-- Canvas Graph Header -->
+            <div class="absolute top-3 left-3 z-10 flex items-center space-x-2">
+                <div class="glass-panel px-3 py-1.5 rounded-lg flex items-center space-x-2 text-xs border border-cyber-border shadow-lg">
+                    <div class="w-2 h-2 rounded-full bg-cyber-cyan animate-ping"></div>
+                    <span class="font-semibold tracking-wide text-cyber-text">GRAPH NETWORK</span>
+                    <span id="graph-node-count" class="text-[10px] text-cyber-muted font-mono bg-cyber-bg/80 px-1.5 py-0.5 rounded">(18 Nodes)</span>
+                </div>
+            </div>
+
+            <!-- Floating Graph Control Panel -->
+            <div class="absolute top-3 right-3 z-10 glass-panel p-3 rounded-xl border border-cyber-border shadow-2xl w-64 space-y-3 text-xs">
+                <div class="flex items-center justify-between border-b border-cyber-border pb-1.5 font-medium text-cyber-cyan">
+                    <span class="flex items-center gap-1.5"><i data-lucide="sliders" class="w-3.5 h-3.5"></i> Physics & Filters</span>
+                    <button id="reset-graph-btn" class="text-[10px] text-cyber-muted hover:text-white transition">Reset</button>
+                </div>
+
+                <!-- Controls -->
+                <div class="space-y-2">
+                    <div>
+                        <div class="flex justify-between text-[11px] text-cyber-muted mb-1">
+                            <span>Gravity Force</span>
+                            <span id="gravity-val" class="font-mono text-cyber-cyan">0.05</span>
+                        </div>
+                        <input type="range" id="gravity-range" min="0.01" max="0.2" step="0.01" value="0.05" class="w-full accent-cyber-cyan bg-cyber-bg h-1 rounded cursor-pointer">
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between text-[11px] text-cyber-muted mb-1">
+                            <span>Pulse Animation Speed</span>
+                            <span id="pulse-val" class="font-mono text-cyber-purple">1.5x</span>
+                        </div>
+                        <input type="range" id="pulse-range" min="0.2" max="4.0" step="0.2" value="1.5" class="w-full accent-cyber-purple bg-cyber-bg h-1 rounded cursor-pointer">
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between text-[11px] text-cyber-muted mb-1">
+                            <span>Node Size</span>
+                            <span id="size-val" class="font-mono text-cyber-pink">1.0</span>
+                        </div>
+                        <input type="range" id="size-range" min="0.5" max="2.5" step="0.1" value="1.0" class="w-full accent-cyber-pink bg-cyber-bg h-1 rounded cursor-pointer">
+                    </div>
+
+                    <div class="pt-1 flex items-center justify-between border-t border-cyber-border/50 text-[11px]">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="toggle-particles" checked class="rounded border-cyber-border bg-cyber-bg text-cyber-cyan focus:ring-0">
+                            <span class="text-cyber-muted">Data Pulses</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="toggle-labels" checked class="rounded border-cyber-border bg-cyber-bg text-cyber-cyan focus:ring-0">
+                            <span class="text-cyber-muted">Node Labels</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Canvas Element -->
+            <canvas id="graph-canvas" class="w-full h-full cursor-grab active:cursor-grabbing"></canvas>
+
+            <!-- Graph Hover / Node Quick Info Overlay -->
+            <div id="node-hover-tooltip" class="absolute hidden z-20 pointer-events-none glass-panel p-2.5 rounded-lg border border-cyber-cyan/40 text-xs shadow-xl max-w-xs space-y-1">
+                <div id="tooltip-title" class="font-bold text-cyber-cyan"></div>
+                <div id="tooltip-desc" class="text-[11px] text-cyber-muted"></div>
+                <div id="tooltip-tags" class="flex flex-wrap gap-1 pt-1"></div>
+            </div>
+        </section>
+    </div>
+
+    <!-- BOTTOM STATUS BAR -->
+    <footer class="h-6 bg-cyber-sidebar border-t border-cyber-border flex items-center justify-between px-3 text-[11px] text-cyber-muted z-30">
+        <div class="flex items-center space-x-4">
+            <span class="flex items-center gap-1.5 text-cyber-emerald">
+                <span class="w-1.5 h-1.5 rounded-full bg-cyber-emerald animate-ping"></span>
+                Vault Synced
+            </span>
+            <span><i data-lucide="file" class="w-3 h-3 inline mr-1"></i> <span id="stat-words">1,420</span> words</span>
+            <span><i data-lucide="binary" class="w-3 h-3 inline mr-1"></i> <span id="stat-chars">9,812</span> characters</span>
+        </div>
+
+        <div class="flex items-center space-x-4 font-mono">
+            <span>UTF-8</span>
+            <span>Markdown</span>
+            <span class="text-cyber-cyan hover:underline cursor-pointer" onclick="alert('Obsidian Cyberpunk Theme active! Built for ultimate tech productivity.')">
+                Cyberpunk-V3.8
+            </span>
+        </div>
+    </footer>
+
+    <!-- COMMAND PALETTE MODAL -->
+    <div id="cmd-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-start justify-center pt-20 hidden">
+        <div class="glass-panel w-full max-w-lg rounded-xl border border-cyber-cyan/30 shadow-2xl overflow-hidden flex flex-col">
+            <div class="p-3 border-b border-cyber-border flex items-center gap-2">
+                <i data-lucide="terminal" class="w-4 h-4 text-cyber-cyan"></i>
+                <input type="text" id="cmd-input" placeholder="Type a command or note name..." class="w-full bg-transparent border-none text-sm text-cyber-text focus:outline-none placeholder-cyber-muted">
+            </div>
+            <div class="p-2 max-h-64 overflow-y-auto space-y-1 text-xs" id="cmd-list">
+                <div class="p-2 hover:bg-cyber-card rounded cursor-pointer flex justify-between items-center text-cyber-text" onclick="executeCmd('open-proxmox')">
+                    <span><i data-lucide="file-text" class="w-3.5 h-3.5 inline mr-2 text-cyber-cyan"></i> Open Proxmox Cluster Config</span>
+                    <span class="text-[10px] text-cyber-muted">Note</span>
+                </div>
+                <div class="p-2 hover:bg-cyber-card rounded cursor-pointer flex justify-between items-center text-cyber-text" onclick="executeCmd('toggle-graph')">
+                    <span><i data-lucide="network" class="w-3.5 h-3.5 inline mr-2 text-cyber-purple"></i> Toggle Full Graph Mode</span>
+                    <span class="text-[10px] text-cyber-muted">View</span>
+                </div>
+                <div class="p-2 hover:bg-cyber-card rounded cursor-pointer flex justify-between items-center text-cyber-text" onclick="executeCmd('new-note')">
+                    <span><i data-lucide="plus-circle" class="w-3.5 h-3.5 inline mr-2 text-cyber-emerald"></i> Create New Dev Note</span>
+                    <span class="text-[10px] text-cyber-muted">Action</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // --- VAULT DATABASE ---
+        const vaultData = __VAULT_DATA__;
+
+
+        // State Tracking
+        let activeNoteId = (vaultData.notes[0] || { id: null }).id;
+        let openTabIds = activeNoteId ? [activeNoteId] : [];
+
+        // --- RENDER SIDEBAR FILE TREE & TABS ---
+        function renderSidebar() {
+            const treeEl = document.getElementById('file-tree');
+            treeEl.innerHTML = '';
+
+            const categories = ["Dev", "Homelab", "Life"];
+            
+            categories.forEach(cat => {
+                const catHeader = document.createElement('div');
+                catHeader.className = "flex items-center space-x-1 font-semibold text-cyber-muted hover:text-cyber-text cursor-pointer py-1 mt-1";
+                catHeader.innerHTML = `
+                    <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-cyber-cyan"></i>
+                    <i data-lucide="folder" class="w-3.5 h-3.5 text-cyber-purple"></i>
+                    <span>${cat}</span>
+                `;
+                treeEl.appendChild(catHeader);
+
+                const catNotes = vaultData.notes.filter(n => n.category === cat);
+                catNotes.forEach(note => {
+                    const noteItem = document.createElement('div');
+                    const isActive = note.id === activeNoteId;
+                    noteItem.className = `flex items-center space-x-2 pl-6 py-1 rounded cursor-pointer transition ${
+                        isActive 
+                            ? 'bg-cyber-card text-cyber-cyan font-medium border-l-2 border-cyber-cyan' 
+                            : 'text-cyber-text/80 hover:bg-cyber-card/50 hover:text-cyber-cyan'
+                    }`;
+                    noteItem.onclick = () => selectNote(note.id);
+                    noteItem.innerHTML = `
+                        <i data-lucide="file-text" class="w-3 h-3 ${isActive ? 'text-cyber-cyan' : 'text-cyber-muted'}"></i>
+                        <span class="truncate">${note.title}</span>
+                    `;
+                    treeEl.appendChild(noteItem);
+                });
+            });
+
+            renderTags();
+            lucide.createIcons();
+        }
+
+        function renderTags() {
+            const tagContainer = document.getElementById('tag-cloud');
+            const allTags = [...new Set(vaultData.notes.flatMap(n => n.tags))];
+            
+            tagContainer.innerHTML = allTags.map(tag => `
+                <span class="px-2 py-0.5 rounded-full text-[10px] bg-cyber-card border border-cyber-border text-cyber-cyan hover:border-cyber-cyan cursor-pointer transition">
+                    ${tag}
+                </span>
+            `).join('');
+        }
+
+        function renderTabs() {
+            const tabsEl = document.getElementById('tabs-container');
+            tabsEl.innerHTML = '';
+
+            openTabIds.forEach(id => {
+                const note = vaultData.notes.find(n => n.id === id);
+                if (!note) return;
+
+                const isActive = id === activeNoteId;
+                const tab = document.createElement('div');
+                tab.className = `flex items-center space-x-2 px-3 py-1 rounded-t border-t border-x cursor-pointer transition ${
+                    isActive 
+                        ? 'bg-cyber-bg border-cyber-cyan text-cyber-cyan font-medium' 
+                        : 'bg-cyber-card/50 border-cyber-border text-cyber-muted hover:text-cyber-text'
+                }`;
+                tab.onclick = () => selectNote(id);
+                tab.innerHTML = `
+                    <i data-lucide="file-code" class="w-3 h-3"></i>
+                    <span class="truncate max-w-[120px]">${note.title}</span>
+                    <i data-lucide="x" class="w-3 h-3 hover:text-cyber-pink transition ml-1" onclick="closeTab(event, '${id}')"></i>
+                `;
+                tabsEl.appendChild(tab);
+            });
+            lucide.createIcons();
+        }
+
+        function closeTab(e, id) {
+            e.stopPropagation();
+            openTabIds = openTabIds.filter(t => t !== id);
+            if (activeNoteId === id && openTabIds.length > 0) {
+                activeNoteId = openTabIds[openTabIds.length - 1];
+            }
+            renderTabs();
+            renderSidebar();
+            renderActiveNote();
+        }
+
+        // --- RENDER EDITOR NOTE ---
+        function selectNote(id) {
+            activeNoteId = id;
+            if (!openTabIds.includes(id)) {
+                openTabIds.push(id);
+            }
+            renderTabs();
+            renderSidebar();
+            renderActiveNote();
+            
+            // Highlight node in graph view
+            highlightGraphNode(id);
+        }
+
+        function renderActiveNote() {
+            const note = vaultData.notes.find(n => n.id === activeNoteId);
+            if (!note) return;
+
+            document.getElementById('active-note-path').innerText = note.path;
+
+            const noteBody = document.getElementById('note-body');
+            
+            // Basic markdown parser simulation
+            let formattedContent = note.content
+                // Headers
+                .replace(/^# (.*$)/gim, '<h1 class="text-2xl font-bold text-cyber-cyan glow-cyan tracking-wide border-b border-cyber-border pb-2 mb-4">$1</h1>')
+                .replace(/^## (.*$)/gim, '<h2 class="text-lg font-semibold text-cyber-purple mt-6 mb-3 flex items-center gap-2"><i data-lucide="hash" class="w-4 h-4 text-cyber-cyan"></i>$1</h2>')
+                // Code Blocks
+                .replace(/```(\w+)?\n([\s\S]*?)```/g, (match, lang, code) => {
+                    return `<div class="glass-panel rounded-lg overflow-hidden my-4 border border-cyber-border">
+                        <div class="bg-cyber-card px-3 py-1 text-[11px] text-cyber-muted font-mono flex justify-between items-center border-b border-cyber-border">
+                            <span>${lang || 'code'}</span>
+                            <i data-lucide="copy" class="w-3.5 h-3.5 hover:text-cyber-cyan cursor-pointer"></i>
+                        </div>
+                        <pre class="p-3 text-xs font-mono text-cyber-text overflow-x-auto"><code>${highlightCode(code)}</code></pre>
+                    </div>`;
+                })
+                // Inline Code
+                .replace(/`([^`]+)`/g, '<code class="bg-cyber-card px-1.5 py-0.5 rounded text-cyber-cyan font-mono text-[11px] border border-cyber-border">$1</code>')
+                // Internal WikiLinks [[Note Name]]
+                .replace(/\[\[([^\]]+)\]\]/g, (match, title) => {
+                    const targetNote = vaultData.notes.find(n => n.title.toLowerCase() === title.toLowerCase());
+                    const targetId = targetNote ? targetNote.id : '';
+                    return `<span onclick="selectNote('${targetId}')" class="text-cyber-cyan hover:underline cursor-pointer font-medium bg-cyber-cyan/10 px-1 py-0.5 rounded border border-cyber-cyan/30 inline-flex items-center gap-1"><i data-lucide="link" class="w-3 h-3"></i>${title}</span>`;
+                })
+                // Checkboxes
+                .replace(/- \[x\] (.*$)/gim, '<div class="flex items-center space-x-2 text-cyber-muted line-through my-1"><input type="checkbox" checked disabled class="rounded text-cyber-cyan bg-cyber-bg border-cyber-border"><span class="text-xs">$1</span></div>')
+                .replace(/- \[ \] (.*$)/gim, '<div class="flex items-center space-x-2 text-cyber-text my-1"><input type="checkbox" disabled class="rounded text-cyber-cyan bg-cyber-bg border-cyber-border"><span class="text-xs">$1</span></div>')
+
+                // Tabellen
+                .replace(/(?:^\|.*\|[ \t]*\r?\n?)+/gm, (block) => {
+                    const zeilen = block.trim().split(/\r?\n/).filter(z => z.trim() !== '' && !/^\|[\s:|-]+\|?$/.test(z.trim()));
+                    if (!zeilen.length) return block;
+                    const zellen = z => z.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim());
+                    let html = '<table class="w-full text-xs my-4 border border-cyber-border rounded-lg overflow-hidden"><tbody>';
+                    zeilen.forEach((z, i) => {
+                        html += '<tr class="border-b border-cyber-border last:border-0">' + zellen(z).map(c => i === 0
+                            ? '<th class="px-2 py-1 text-left text-cyber-cyan font-semibold bg-cyber-card">' + c + '</th>'
+                            : '<td class="px-2 py-1 text-left text-cyber-muted">' + c + '</td>').join('') + '</tr>';
+                    });
+                    return html + '</tbody></table>';
+                })
+                // Fett und kursiv
+                .replace(/\*\*([^*]+)\*\*/g, '<strong class="text-cyber-text font-semibold">$1</strong>')
+                .replace(/(^|[\s(])\*([^*\n]+)\*/g, '$1<em class="text-cyber-text italic">$2</em>')
+                // Listen
+                .replace(/^\s*[-*] (?!\[[ x]\])/gim, '<span class="text-cyber-cyan mr-1">▸</span>')
+                // Absaetze: Leerzeilen bekommen Luft
+                .replace(/\n\n/g, '<div class="h-2"></div>');
+
+            // Render Tags at top of note
+            const tagBadgeList = note.tags.map(t => `<span class="px-2 py-0.5 rounded-full text-[10px] bg-cyber-purple/10 text-cyber-purple border border-cyber-purple/30">${t}</span>`).join(' ');
+
+            noteBody.innerHTML = `
+                <div class="flex items-center gap-2 mb-2">
+                    ${tagBadgeList}
+                </div>
+                ${formattedContent}
+            `;
+
+            // Update footer stats
+            const textLength = note.content.length;
+            const wordCount = note.content.split(/\s+/).length;
+            document.getElementById('stat-words').innerText = wordCount.toLocaleString();
+            document.getElementById('stat-chars').innerText = textLength.toLocaleString();
+
+            lucide.createIcons();
+        }
+
+        function highlightCode(code) {
+            return code
+                .replace(/(const|var|let|async|await|return|import|from|class|public|pveceph|app\.MapGet)/g, '<span class="syn-keyword">$1</span>')
+                .replace(/(".*?"|'.*?')" /g, '<span class="syn-str">$1</span>')
+                .replace(/(\/\/.*$)/gm, '<span class="syn-comment">$1</span>')
+                .replace(/\b(\d+)\b/g, '<span class="syn-num">$1</span>');
+        }
+
+        // --- GRAPH NETWORK ANIMATED ENGINE (HTML5 Canvas) ---
+        const canvas = document.getElementById('graph-canvas');
+        const ctx = canvas.getContext('2d');
+
+        let nodes = [];
+        let links = [];
+        let particles = [];
+        
+        // Physics Params
+        let config = {
+            gravity: 0.05,
+            pulseSpeed: 1.5,
+            nodeScale: 1.0,
+            showParticles: true,
+            showLabels: true
+        };
+
+        // Canvas pan/zoom state
+        let transform = { x: 0, y: 0, scale: 1 };
+        let isDragging = false;
+        let dragStart = { x: 0, y: 0 };
+        let hoveredNode = null;
+        let draggedNode = null;
+
+        function initGraph() {
+            resizeCanvas();
+
+            // Transform vaultData into graph nodes with initial physics positions
+            const width = canvas.width;
+            const height = canvas.height;
+
+            nodes = vaultData.notes.map((note, index) => {
+                const angle = (index / vaultData.notes.length) * Math.PI * 2;
+                const radius = 150 + Math.random() * 100;
+                return {
+                    id: note.id,
+                    title: note.title,
+                    category: note.category,
+                    tags: note.tags,
+                    x: width / 2 + Math.cos(angle) * radius,
+                    y: height / 2 + Math.sin(angle) * radius,
+                    vx: (Math.random() - 0.5) * 1.5,
+                    vy: (Math.random() - 0.5) * 1.5,
+                    radius: note.category === 'Homelab' ? 8 : note.category === 'Dev' ? 7 : 6,
+                    color: note.category === 'Homelab' ? '#00f0ff' : note.category === 'Dev' ? '#a855f7' : '#ec4899'
+                };
+            });
+
+            links = vaultData.edges.map(e => ({
+                source: nodes.find(n => n.id === e.source),
+                target: nodes.find(n => n.id === e.target)
+            })).filter(l => l.source && l.target);
+
+            nodes.forEach(n => { n.degree = 0; });
+            links.forEach(l => { l.source.degree++; l.target.degree++; });
+
+            // Spawn data pulse particles traveling on links
+            particles = [];
+            for (let i = 0; i < 20; i++) {
+                spawnParticle();
+            }
+
+            document.getElementById('graph-node-count').innerText = `(${nodes.length} Nodes)`;
+
+            const cNotes = document.getElementById('count-notes');
+            const cLinks = document.getElementById('count-links');
+            if (cNotes) cNotes.innerText = nodes.length;
+            if (cLinks) cLinks.innerText = links.length;
+        }
+
+        function spawnParticle() {
+            if (links.length === 0) return;
+            const link = links[Math.floor(Math.random() * links.length)];
+            particles.push({
+                link: link,
+                progress: Math.random(),
+                speed: 0.003 + Math.random() * 0.005,
+                color: link.source.color
+            });
+        }
+
+        function resizeCanvas() {
+            const container = document.getElementById('graph-container');
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+        }
+
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+        });
+
+        // Main Animation Loop
+        function animateGraph() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            ctx.save();
+            // Apply Pan & Zoom
+            ctx.translate(transform.x, transform.y);
+            ctx.scale(transform.scale, transform.scale);
+
+            // 1. Physics Simulation step
+            nodes.forEach(node => {
+                if (node === draggedNode) return;
+
+                // Center gravity
+                const dx = (canvas.width / 2) - node.x;
+                const dy = (canvas.height / 2) - node.y;
+                node.vx += dx * config.gravity * 0.01;
+                node.vy += dy * config.gravity * 0.01;
+
+                // Repulsion between nodes
+                nodes.forEach(other => {
+                    if (node === other) return;
+                    const rdx = node.x - other.x;
+                    const rdy = node.y - other.y;
+                    const dist = Math.sqrt(rdx * rdx + rdy * rdy) || 1;
+                    if (dist < 120) {
+                        const force = (120 - dist) / dist;
+                        node.vx += (rdx / dist) * force * 0.2;
+                        node.vy += (rdy / dist) * force * 0.2;
+                    }
+                });
+
+                // Velocity Damping
+                node.vx *= 0.92;
+                node.vy *= 0.92;
+
+                node.x += node.vx;
+                node.y += node.vy;
+            });
+
+            // Link Attraction Spring Forces
+            links.forEach(link => {
+                const dx = link.target.x - link.source.x;
+                const dy = link.target.y - link.source.y;
+                const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+                const force = (dist - 90) * 0.005;
+
+                if (link.source !== draggedNode) {
+                    link.source.vx += (dx / dist) * force;
+                    link.source.vy += (dy / dist) * force;
+                }
+                if (link.target !== draggedNode) {
+                    link.target.vx -= (dx / dist) * force;
+                    link.target.vy -= (dy / dist) * force;
+                }
+            });
+
+            // 2. Draw Edges / Links
+            links.forEach(link => {
+                const isConnectedToActive = link.source.id === activeNoteId || link.target.id === activeNoteId;
+                ctx.beginPath();
+                ctx.moveTo(link.source.x, link.source.y);
+                ctx.lineTo(link.target.x, link.target.y);
+                ctx.strokeStyle = isConnectedToActive ? 'rgba(0, 240, 255, 0.6)' : 'rgba(56, 189, 248, 0.12)';
+                ctx.lineWidth = isConnectedToActive ? 2 : 1;
+                ctx.stroke();
+            });
+
+            // 3. Draw Traveling Data Pulse Particles
+            if (config.showParticles) {
+                particles.forEach(p => {
+                    p.progress += p.speed * config.pulseSpeed;
+                    if (p.progress >= 1) {
+                        p.progress = 0;
+                        p.link = links[Math.floor(Math.random() * links.length)];
+                    }
+
+                    const px = p.link.source.x + (p.link.target.x - p.link.source.x) * p.progress;
+                    const py = p.link.source.y + (p.link.target.y - p.link.source.y) * p.progress;
+
+                    ctx.beginPath();
+                    ctx.arc(px, py, 2.5, 0, Math.PI * 2);
+                    ctx.fillStyle = p.color;
+                    ctx.shadowColor = p.color;
+                    ctx.shadowBlur = 8;
+                    ctx.fill();
+                    ctx.shadowBlur = 0; // Reset glow
+                });
+            }
+
+            // 4. Draw Nodes
+            nodes.forEach(node => {
+                const isActive = node.id === activeNoteId;
+                const isHovered = node === hoveredNode;
+                const r = node.radius * config.nodeScale * (isActive ? 1.4 : 1.0);
+
+                // Outer Glowing Ring for Active Note
+                if (isActive || isHovered) {
+                    ctx.beginPath();
+                    ctx.arc(node.x, node.y, r + 6, 0, Math.PI * 2);
+                    ctx.fillStyle = isActive ? 'rgba(0, 240, 255, 0.2)' : 'rgba(168, 85, 247, 0.2)';
+                    ctx.fill();
+                }
+
+                // Node Body
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, r, 0, Math.PI * 2);
+                ctx.fillStyle = node.color;
+                ctx.shadowColor = node.color;
+                ctx.shadowBlur = isActive || isHovered ? 15 : 6;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+
+                // Node Labels
+                if ((config.showLabels && node.degree >= 15) || isActive || isHovered) {
+                    ctx.font = `${isActive ? '600 11px' : '400 10px'} Inter, sans-serif`;
+                    ctx.fillStyle = isActive ? '#00f0ff' : isHovered ? '#ffffff' : '#94a3b8';
+                    ctx.fillText(node.title, node.x + r + 6, node.y + 3);
+                }
+            });
+
+            ctx.restore();
+            requestAnimationFrame(animateGraph);
+        }
+
+        function highlightGraphNode(id) {
+            const target = nodes.find(n => n.id === id);
+            if (target) {
+                // Smooth nudge velocity
+                target.vx += (Math.random() - 0.5) * 5;
+                target.vy += (Math.random() - 0.5) * 5;
+            }
+        }
+
+        // --- INTERACTIVE MOUSE & TOUCH CONTROLS FOR GRAPH ---
+        function getCanvasMousePos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+            const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+            
+            const mouseX = clientX - rect.left;
+            const mouseY = clientY - rect.top;
+
+            // Reverse translate and scale transform
+            return {
+                x: (mouseX - transform.x) / transform.scale,
+                y: (mouseY - transform.y) / transform.scale,
+                screenX: clientX,
+                screenY: clientY
+            };
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            const pos = getCanvasMousePos(e);
+            
+            // Check if clicked on a node
+            const clicked = nodes.find(n => {
+                const dx = n.x - pos.x;
+                const dy = n.y - pos.y;
+                return Math.sqrt(dx * dx + dy * dy) <= (n.radius * config.nodeScale + 4);
+            });
+
+            if (clicked) {
+                draggedNode = clicked;
+                selectNote(clicked.id);
+            } else {
+                isDragging = true;
+                dragStart = { x: e.clientX - transform.x, y: e.clientY - transform.y };
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            const pos = getCanvasMousePos(e);
+
+            if (draggedNode) {
+                draggedNode.x = pos.x;
+                draggedNode.y = pos.y;
+                draggedNode.vx = 0;
+                draggedNode.vy = 0;
+                return;
+            }
+
+            if (isDragging) {
+                transform.x = e.clientX - dragStart.x;
+                transform.y = e.clientY - dragStart.y;
+                return;
+            }
+
+            // Hover Check
+            hoveredNode = nodes.find(n => {
+                const dx = n.x - pos.x;
+                const dy = n.y - pos.y;
+                return Math.sqrt(dx * dx + dy * dy) <= (n.radius * config.nodeScale + 5);
+            });
+
+            const tooltip = document.getElementById('node-hover-tooltip');
+            if (hoveredNode) {
+                tooltip.classList.remove('hidden');
+                tooltip.style.left = `${pos.screenX + 15}px`;
+                tooltip.style.top = `${pos.screenY + 15}px`;
+                document.getElementById('tooltip-title').innerText = hoveredNode.title;
+                document.getElementById('tooltip-desc').innerText = `Category: ${hoveredNode.category}`;
+                document.getElementById('tooltip-tags').innerHTML = hoveredNode.tags.map(t => `<span class="px-1.5 py-0.5 rounded text-[9px] bg-cyber-cyan/10 text-cyber-cyan border border-cyber-cyan/30">${t}</span>`).join('');
+            } else {
+                tooltip.classList.add('hidden');
+            }
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDragging = false;
+            draggedNode = null;
+        });
+
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+            transform.scale = Math.min(Math.max(transform.scale * zoomFactor, 0.4), 3.0);
+        });
+
+        // Controls Binds
+        document.getElementById('gravity-range').addEventListener('input', (e) => {
+            config.gravity = parseFloat(e.target.value);
+            document.getElementById('gravity-val').innerText = config.gravity;
+        });
+        document.getElementById('pulse-range').addEventListener('input', (e) => {
+            config.pulseSpeed = parseFloat(e.target.value);
+            document.getElementById('pulse-val').innerText = `${config.pulseSpeed}x`;
+        });
+        document.getElementById('size-range').addEventListener('input', (e) => {
+            config.nodeScale = parseFloat(e.target.value);
+            document.getElementById('size-val').innerText = config.nodeScale;
+        });
+        document.getElementById('toggle-particles').addEventListener('change', (e) => {
+            config.showParticles = e.target.checked;
+        });
+        document.getElementById('toggle-labels').addEventListener('change', (e) => {
+            config.showLabels = e.target.checked;
+        });
+        document.getElementById('reset-graph-btn').addEventListener('click', () => {
+            transform = { x: 0, y: 0, scale: 1 };
+            initGraph();
+        });
+
+        // --- LAYOUT & UI TOGGLES ---
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('-ml-72');
+        }
+
+        function toggleLayout(mode) {
+            const editor = document.getElementById('editor-container');
+            const graph = document.getElementById('graph-container');
+
+            if (mode === 'graph-full') {
+                editor.classList.add('hidden');
+                graph.classList.remove('hidden');
+            } else if (mode === 'split') {
+                editor.classList.remove('hidden');
+                graph.classList.remove('hidden');
+            }
+            setTimeout(resizeCanvas, 300);
+        }
+
+        // Search Filter Logic
+        document.getElementById('file-search').addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase();
+            const matchingNote = vaultData.notes.find(n => n.title.toLowerCase().includes(query) || n.tags.some(t => t.toLowerCase().includes(query)));
+            if (matchingNote) {
+                selectNote(matchingNote.id);
+            }
+        });
+
+        // Command Palette Modal
+        const cmdModal = document.getElementById('cmd-modal');
+        document.getElementById('cmd-palette-btn').addEventListener('click', () => {
+            cmdModal.classList.remove('hidden');
+            document.getElementById('cmd-input').focus();
+        });
+
+        window.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') {
+                e.preventDefault();
+                cmdModal.classList.toggle('hidden');
+                if (!cmdModal.classList.contains('hidden')) {
+                    document.getElementById('cmd-input').focus();
+                }
+            }
+            if (e.key === 'Escape') {
+                cmdModal.classList.add('hidden');
+            }
+        });
+
+        function executeCmd(cmd) {
+            cmdModal.classList.add('hidden');
+            if (cmd === 'open-proxmox') selectNote('proxmox-cluster');
+            if (cmd === 'toggle-graph') toggleLayout('graph-full');
+            if (cmd === 'new-note') alert('New Dev Note created in Vault!');
+        }
+
+        // --- INITIALIZATION ---
+        window.onload = function() {
+            renderSidebar();
+            renderTabs();
+            renderActiveNote();
+            initGraph();
+            animateGraph();
+            lucide.createIcons();
+        };
+    </script>
+</body>
+</html>
