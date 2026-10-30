@@ -11,6 +11,7 @@ const os = require('os');
 const path = require('path');
 const { bauIndex } = require('./core/index-bau');
 const { lesevault, pruefeVault } = require('./core/vault-daten');
+const { semantischeSuche } = require('./core/suche');
 const { autoUpdater } = require('electron-updater');
 const http = require('http');
 
@@ -204,6 +205,7 @@ function startClaudeApi() {
               { name: 'search_notes', description: 'Volltextsuche im Vault.', inputSchema: { type: 'object', properties: { query: { type: 'string' }, limit: { type: 'number' } } } },
               { name: 'vault_checks', description: 'Prüft Orphans, kaputte Links, fehlende Frontmatter/Tags.', inputSchema: { type: 'object', properties: {} } },
               { name: 'graph_summary', description: 'Knoten- und Kantenanzahl plus Top-Verweise.', inputSchema: { type: 'object', properties: {} } },
+              { name: 'semantic_search', description: 'Semantische/lexikalische Ähnlichkeitssuche.', inputSchema: { type: 'object', properties: { query: { type: 'string' }, limit: { type: 'number' } } } },
             ] });
             return;
           }
@@ -226,6 +228,8 @@ function startClaudeApi() {
                 .map(n => ({ id: n.id, title: n.title, snippet: (n.content || '').slice(0, 240) }));
             } else if (name === 'vault_checks') {
               out = pruefeVault(VAULT);
+            } else if (name === 'semantic_search') {
+              out = semantischeSuche(VAULT, args.query || '', Number(args.limit) || 15);
             } else if (name === 'graph_summary') {
               const { daten } = lesevault(VAULT);
               out = { notes: (daten.notes || []).length, edges: (daten.edges || []).length };
@@ -313,6 +317,12 @@ function startClaudeApi() {
       }
       if (url.pathname === '/api/checks') {
         res.end(JSON.stringify(pruefeVault(VAULT)));
+        return;
+      }
+      if (url.pathname === '/api/search_semantic') {
+        const q = url.searchParams.get('q') || '';
+        const limit = url.searchParams.get('limit') || '15';
+        res.end(JSON.stringify({ count: semantischeSuche(VAULT, q, limit).length, results: semantischeSuche(VAULT, q, limit) }));
         return;
       }
       if (url.pathname === '/api/graph') {
