@@ -6,6 +6,7 @@
 const fs = require('fs');
 const path = require('path');
 const { lesevault } = require('./vault-daten');
+const { version: APP_VERSION } = require('../package.json');
 
 const ASSETS = path.join(__dirname, '..', 'assets', 'mockup.html');
 const ZIEL_ORDNER = path.join(__dirname, '..', '.lauf');
@@ -22,6 +23,7 @@ function datenInHtml(html, daten) {
      ($', $&, …) — ein `$'` in einer echten Notiz hat die Vorlage sonst in die
      Ausgabe hineinkopiert und das Skript zerstört (Befund 30.10.). */
   html = html.replace('__VAULT_DATA__', () => json);
+  html = html.replace('NEXUS_VAULT v3.8', 'NEXUS VAULT v' + APP_VERSION);
   return html.replace(
     'let activeNoteId = (vaultData.notes[0] || { id: null }).id;',
     () => 'let activeNoteId = ' + JSON.stringify(daten.aktiv) + ';',
