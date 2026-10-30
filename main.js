@@ -111,6 +111,13 @@ function schreibeNotiz(pfad, text) {
   const crlf = /\r\n/.test(alt);
   const neu = crlf ? text.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n') : text.replace(/\r\n/g, '\n');
   if (neu === alt) return { geaendert: false };
+  // Sicherheitsnetz: vor dem Überschreiben eine Backup-Kopie legen (für Claude-Aktionen)
+  try {
+    const bdir = path.join(RUNDIR, 'backups');
+    fs.mkdirSync(bdir, { recursive: true });
+    const stempel = new Date().toISOString().replace(/[:.]/g, '-');
+    fs.copyFileSync(voll, path.join(bdir, path.basename(voll) + '.' + stempel + '.bak'));
+  } catch (e) { /* kein Backup – nicht blockieren */ }
   fs.writeFileSync(voll, neu, 'utf8');
   return { geaendert: true };
 }
@@ -177,12 +184,42 @@ function startClaudeApi() {
     const url = new URL(req.url || '/', 'http://127.0.0.1:' + API_PORT);
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     res.setHeader('Access-Control-Allow-Origin', 'http://127.0.0.1');
-    if (req.method !== 'GET' && !(req.url || '').startsWith('/mcp')) {
+    if (req.method !== 'GET' && !(req.url || '').startsWith('/mcp') && !(req.url || '').startsWith('/api/note')) {
       res.statusCode = 405;
       res.end(JSON.stringify({ fehler: 'Nur GET unterstützt' }));
       return;
     }
     try {
+      if (req.method === 'POST' && url.pathname === '/api/note') {
+        let body = '';
+        req.on('data', c => body += c);
+        req.on('end', () => {
+          let payload = {};
+          try { payload = JSON.parse(body || '{}'); } catch (e) { payload = {}; }
+          const pfad = payload.path || payload.pfad || '';
+          const voll = inVault(pfad);
+          if (!voll || typeof payload.content !== 'string') {
+            res.statusCode = 400;
+            res.end(JSON.stringify({ fehler: 'Ungültiger Pfad oder Text' }));
+            return;
+          }
+          try {
+            if (payload.apply !== true) {
+              let alt = '';
+              try { alt = fs.readFileSync(voll, 'utf8').replace(/^﻿/, ''); } catch (e) { alt = ''; }
+              res.end(JSON.stringify({ ok: true, apply: false, path: pfad, wouldChange: alt !== payload.content, currentLength: alt.length, proposedLength: payload.content.length, message: 'Vorschau — mit apply:true schreiben' }));
+              return;
+            }
+            const r = schreibeNotiz(pfad, payload.content);
+            if (r.geaendert) neuBauen('api');
+            res.end(JSON.stringify({ ok: true, apply: true, path: pfad }));
+          } catch (e) {
+            res.statusCode = 500;
+            res.end(JSON.stringify({ fehler: e.message }));
+          }
+        });
+        return;
+      }
       if (url.pathname === '/mcp') {
         let body = '';
         req.on('data', c => body += c);
@@ -206,6 +243,7 @@ function startClaudeApi() {
               { name: 'vault_checks', description: 'Prüft Orphans, kaputte Links, fehlende Frontmatter/Tags.', inputSchema: { type: 'object', properties: {} } },
               { name: 'graph_summary', description: 'Knoten- und Kantenanzahl plus Top-Verweise.', inputSchema: { type: 'object', properties: {} } },
               { name: 'semantic_search', description: 'Semantische/lexikalische Ähnlichkeitssuche.', inputSchema: { type: 'object', properties: { query: { type: 'string' }, limit: { type: 'number' } } } },
+              { name: 'write_note', description: 'Schreibt eine Notiz (apply:true) oder liefert Vorschau (apply:false/default).', inputSchema: { type: 'object', properties: { path: { type: 'string' }, content: { type: 'string' }, apply: { type: 'boolean' } }, required: ['path', 'content'] } },
             ] });
             return;
           }
@@ -230,6 +268,18 @@ function startClaudeApi() {
               out = pruefeVault(VAULT);
             } else if (name === 'semantic_search') {
               out = semantischeSuche(VAULT, args.query || '', Number(args.limit) || 15);
+            } else if (name === 'write_note') {
+              const pfad = args.path || '';
+              const voll = inVault(pfad);
+              if (!voll || typeof args.content !== 'string') throw new Error('Ungültiger Pfad oder Text');
+              if (args.apply !== true) {
+                let alt = '';
+                try { alt = fs.readFileSync(voll, 'utf8').replace(/^﻿/, ''); } catch (e) { alt = ''; }
+                out = { ok: true, apply: false, path: pfad, wouldChange: alt !== args.content, currentLength: alt.length, proposedLength: args.content.length };
+              } else {
+                out = { ok: true, apply: true, path: pfad, ...schreibeNotiz(pfad, args.content) };
+                if (out.geaendert) neuBauen('mcp');
+              }
             } else if (name === 'graph_summary') {
               const { daten } = lesevault(VAULT);
               out = { notes: (daten.notes || []).length, edges: (daten.edges || []).length };
