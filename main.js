@@ -28,7 +28,7 @@ let wachstimer = null;
 function neuBauen(ursache) {
   try { fs.mkdirSync(RUNDIR, { recursive: true }); } catch (e) {}
   try {
-    bauIndex(VAULT);
+    bauIndex(VAULT, RUNDIR);
   } catch (e) {
     /* Kein dialog.showErrorBox — modal und blockiert den Main-Prozess, bis
        ihn jemand anklickt (Befund 30.10.: Port tot bei CPU-Last). */

@@ -28,13 +28,15 @@ function datenInHtml(html, daten) {
   );
 }
 
-function bauIndex(wurzel) {
+function bauIndex(wurzel, zielOrdner) {
+  const ordner = zielOrdner || ZIEL_ORDNER;
+  const ziel = path.join(ordner, 'index.html');
   const vorlage = fs.readFileSync(ASSETS, 'utf8');
   const { daten, zaehler } = lesevault(wurzel);
   const html = datenInHtml(vorlage, daten);
-  fs.mkdirSync(ZIEL_ORDNER, { recursive: true });
-  fs.writeFileSync(ZIEL, html, 'utf8');
-  return { zaehler, ziel: ZIEL };
+  fs.mkdirSync(ordner, { recursive: true });
+  fs.writeFileSync(ziel, html, 'utf8');
+  return { zaehler, ziel };
 }
 
 function bauStartnotizHtml(wurzel, pfad) {
