@@ -90,6 +90,7 @@ function inVault(pfad) {
 function schreibeNotiz(pfad, text) {
   const voll = inVault(pfad);
   if (!voll) throw new Error('Pfad liegt nicht im Vault: ' + pfad);
+  try { fs.mkdirSync(path.dirname(voll), { recursive: true }); } catch (e) {}
   let alt = '';
   try {
     const puff = fs.readFileSync(voll);
@@ -198,7 +199,7 @@ ipcMain.handle('notiz-lesen', (ev, pfad) => {
 
 ipcMain.handle('notiz-speichern', (ev, pfad, text) => {
   try {
-    if (typeof text !== 'string' || !text.length) return { fehler: 'Leerer Text wird nie geschrieben' };
+    if (typeof text !== 'string') return { fehler: 'Text muss eine Zeichenkette sein' };
     return schreibeNotiz(pfad, text);
   } catch (e) {
     return { fehler: e.message };
