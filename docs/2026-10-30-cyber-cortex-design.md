@@ -8,7 +8,8 @@ Autostart ja. Name „Cyber Cortex" bestätigt.
 
 ## Intent
 
-Der Vault (`C:\Users\basti\Obsidian`) ist das Gedächtnis (seit 29.10.: Eingang, Index,
+Der Vault (`Obsidian`-Ordner im Benutzerverzeichnis, per Umgebungsvariable
+`CYBER_CORTEX_VAULT` übersteuerbar) ist das Gedächtnis (seit 29.10.: Eingang, Index,
 Nächste-Liste, Claude schreibt jeden Block hinein). Die App ist das **Gesicht**:
 Bastians Mockup-HTML **unverändert** (Platzhalter `__VAULT_DATA__` ersetzt — derselbe
 Mechanismus wie im Obsidian-Plugin `cyber-vault-mockup`), ein eigenes Fenster, live.

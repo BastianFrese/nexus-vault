@@ -5,12 +5,14 @@
  * Editor-Fenster (rohes Markdown, Strg+S), Autostart-Helfer.
  */
 'use strict';
-const { app, BrowserWindow, ipcMain, Menu, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu } = require('electron');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { bauIndex } = require('./core/index-bau');
 
-const VAULT = process.env.CYBER_CORTEX_VAULT || 'C:\\Users\\basti\\Obsidian';
+/* Vault-Ort: Umgebungsvariable oder der Ordner „Obsidian" im Benutzerverzeichnis. */
+const VAULT = process.env.CYBER_CORTEX_VAULT || path.join(os.homedir(), 'Obsidian');
 const LAUF = path.join(__dirname, '.lauf', 'index.html');
 const ERNEUERUNG = 3000; // Debounce: Claude schreibt Blöcke über Sekunden
 const WACHSEINHEIT = 15000; // Sicherheitsnetz: Dateizahl + neueste Änderung
@@ -23,17 +25,17 @@ let wachstimer = null;
 
 function neuBauen(ursache) {
   try {
-    const { zaehler } = bauIndex(VAULT);
-    if (haupt && !haupt.isDestroyed()) {
-      haupt.webContents.setTitle('Cyber Cortex — ' + zaehler.notes + ' Notes / ' + zaehler.links + ' Links');
-      haupt.loadFile(LAUF);
-    }
+    bauIndex(VAULT);
   } catch (e) {
     /* Kein dialog.showErrorBox — modal und blockiert den Main-Prozess, bis
        ihn jemand anklickt (Befund 30.10.: Port tot bei CPU-Last). */
     try { fs.mkdirSync(path.join(__dirname, '.lauf'), { recursive: true }); } catch (e2) {}
-    const log = path.join(__dirname, '.lauf', 'fehler.log');
-    fs.appendFileSync(log, new Date().toISOString() + ' ' + (ursache || '') + ': ' + (e && e.message) + '\n');
+    fs.appendFileSync(path.join(__dirname, '.lauf', 'fehler.log'),
+      new Date().toISOString() + ' ' + (ursache || '') + ': ' + (e && e.message) + '\n');
+  }
+  if (haupt && !haupt.isDestroyed()) {
+    /* Reload auch im Fehlerfall: die alte Datei bleibt lesbar, nichts hängt. */
+    haupt.loadFile(LAUF);
   }
 }
 
